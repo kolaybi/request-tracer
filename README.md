@@ -147,6 +147,40 @@ REQUEST_TRACER_INCOMING_ENABLED=true
 
 The middleware records every incoming request with method, path, route, status, timing, headers, and optionally the response body.
 
+## Debugging
+
+Display a chronological waterfall of all traces linked to a `trace_id`:
+
+```bash
+php artisan request-tracer:waterfall 01JEXAMPLE123
+```
+
+The command first prints a summary header:
+
+```
+Trace ID …………………………………………………… 01JEXAMPLE123
+Tenant ID ………………………………………………… 42
+User ID ……………………………………………………… 7
+Client IP ………………………………………………… 192.168.1.10
+First Start …………………………………………… 2026-02-28 12:00:00.000
+Last End …………………………………………………… 2026-02-28 12:00:01.250
+Total Duration …………………………………… 1250ms
+```
+
+Followed by a waterfall table of all traces sorted by start time:
+
+```
++---+-----+----------+------+-----------------------------------------------+--------+----------+-----------------+--------+-------------------------+
+| # | ID  | Type     | Method | Endpoint                                    | Status | Duration | Channel         | Server | Start                   |
++---+-----+----------+------+-----------------------------------------------+--------+----------+-----------------+--------+-------------------------+
+| 1 | 501 | INCOMING | POST | api.example.com/webhooks (api/webhooks)       | 200    | 1250ms   | —               | web-01 | 2026-02-28 12:00:00.000 |
+| 2 | 830 | OUTGOING | GET  | https://bank.example.com/status?ref=abc       | 200    | 320ms    | bank-api        | web-01 | 2026-02-28 12:00:00.100 |
+| 3 | 831 | OUTGOING | POST | https://payment.example.com/charge            | 201    | 890ms    | payment-gateway | web-01 | 2026-02-28 12:00:00.350 |
++---+-----+----------+------+-----------------------------------------------+--------+----------+-----------------+--------+-------------------------+
+```
+
+This is useful for inspecting the full request flow — incoming request plus all outgoing calls it triggered — in chronological order.
+
 ## Data Retention
 
 Purge old traces with the artisan command:
