@@ -18,6 +18,9 @@ All notable changes to this project will be documented in this file.
 - Lazy `trace_id` generation for worker/job environments
 - `StoreTraceJob` for async trace persistence
 - `PurgeTracesCommand` with chunked deletes and configurable retention
+- `TraceWaterfallCommand` (`request-tracer:waterfall {trace_id}`) — displays a chronological waterfall table of all incoming and outgoing traces for a given trace ID
+- `TraceInspectCommand` (`request-tracer:inspect {id} {--full}`) — drill into a single trace with progressive verbosity (`-v` headers, `-vv` body, `-vvv` extras, `--full` no truncation)
+- ULID primary keys for globally unique trace IDs across tables
 - Sampling rate for outgoing traces
 - Body truncation with configurable max size
 - UTF-8 body sanitization (binary bodies are base64-encoded)

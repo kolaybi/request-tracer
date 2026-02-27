@@ -181,6 +181,29 @@ Followed by a waterfall table of all traces sorted by start time:
 
 This is useful for inspecting the full request flow — incoming request plus all outgoing calls it triggered — in chronological order.
 
+### Inspect
+
+Drill into a single trace by its ULID with progressive verbosity:
+
+```bash
+# Metadata only (type, method, endpoint, status, duration, timing, sizes, etc.)
+php artisan request-tracer:inspect 01JEXAMPLE123
+
+# + request/response headers
+php artisan request-tracer:inspect 01JEXAMPLE123 -v
+
+# + request/response body (truncated to 20 lines)
+php artisan request-tracer:inspect 01JEXAMPLE123 -vv
+
+# + body at 40 lines + exception, message, stats, extra (outgoing)
+php artisan request-tracer:inspect 01JEXAMPLE123 -vvv
+
+# Everything, no truncation
+php artisan request-tracer:inspect 01JEXAMPLE123 --full
+```
+
+The command searches both incoming and outgoing tables automatically — no need to specify which.
+
 ## Data Retention
 
 Purge old traces with the artisan command:

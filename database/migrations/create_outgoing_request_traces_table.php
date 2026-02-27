@@ -11,7 +11,7 @@ return new class () extends Migration {
             ->create(config('request-tracer.outgoing.table', 'outgoing_request_traces'), function (Blueprint $table) {
                 $tenantColumn = config('request-tracer.tenant_column', 'tenant_id');
 
-                $table->id();
+                $table->ulid('id')->primary();
                 $table->timestamp('created_at')->nullable()->index();
                 $table->timestamp('start', 3)->nullable();
                 $table->timestamp('end', 3)->nullable();

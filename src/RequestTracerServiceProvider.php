@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use KolayBi\RequestTracer\Commands\PurgeTracesCommand;
+use KolayBi\RequestTracer\Commands\TraceInspectCommand;
 use KolayBi\RequestTracer\Commands\TraceWaterfallCommand;
 use KolayBi\RequestTracer\Contracts\NullContextProvider;
 use KolayBi\RequestTracer\Contracts\TraceContextProvider;
@@ -65,6 +66,7 @@ class RequestTracerServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 PurgeTracesCommand::class,
+                TraceInspectCommand::class,
                 TraceWaterfallCommand::class,
             ]);
         }
