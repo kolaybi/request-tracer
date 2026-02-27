@@ -2,15 +2,27 @@
 
 namespace KolayBi\RequestTracer\Support;
 
+use Carbon\CarbonImmutable;
 use KolayBi\RequestTracer\Jobs\StoreTraceJob;
 
 class TraceHelper
 {
     public static function dispatchTrace(array $attributes, string $modelClass): void
     {
+        $attributes['duration'] = self::calculateDuration($attributes['start'] ?? null, $attributes['end'] ?? null);
+
         StoreTraceJob::dispatch($attributes, $modelClass)
             ->onConnection(config('request-tracer.queue_connection'))
             ->onQueue(config('request-tracer.queue'));
+    }
+
+    public static function calculateDuration(?string $start, ?string $end): ?int
+    {
+        if (null === $start || null === $end) {
+            return null;
+        }
+
+        return (int) CarbonImmutable::parse($start)->diffInMilliseconds(CarbonImmutable::parse($end));
     }
 
     public static function normalizeHeaders(array|string $headers): string

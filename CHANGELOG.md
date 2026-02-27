@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 - `TraceContextProvider` contract for app-specific tenant, user, and server info
 - Configurable tenant column name (`tenant_id`, `company_id`, etc.)
 - Separate database tables for outgoing and incoming traces
-- Computed `duration` column (milliseconds) via MySQL stored expression
+- `duration` column (milliseconds) computed in application layer for database engine portability
 - `trace_id` via Laravel `Context` — links incoming and outgoing traces, auto-resets between queue jobs
 - Lazy `trace_id` generation for worker/job environments
 - `StoreTraceJob` for async trace persistence

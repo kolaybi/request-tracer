@@ -15,9 +15,7 @@ return new class () extends Migration {
                 $table->timestamp('created_at')->nullable()->index();
                 $table->timestamp('start', 3)->nullable();
                 $table->timestamp('end', 3)->nullable();
-                $table->unsignedBigInteger('duration')->nullable()
-                    ->storedAs('TIMESTAMPDIFF(MICROSECOND, start, end) / 1000')
-                    ->comment('Duration in milliseconds');
+                $table->unsignedBigInteger('duration')->nullable();
                 $table->unsignedBigInteger($tenantColumn)->nullable()->index();
                 $table->unsignedBigInteger('user_id')->nullable()->index();
                 $table->ipAddress('client_ip')->nullable();
