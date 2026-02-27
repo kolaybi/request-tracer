@@ -1,0 +1,37 @@
+{
+    "name": "kolaybi/request-tracer",
+    "description": "Standalone request tracing package for Laravel — captures outgoing HTTP/SOAP requests and optionally incoming requests.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.4",
+        "laravel/framework": "^12.0"
+    },
+    "suggest": {
+        "ext-soap": "Required for SOAP request tracing via TracingSoapClient",
+        "ext-simplexml": "Required for extracting SOAP operation names in trace logs"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.27"
+    },
+    "autoload": {
+        "psr-4": {
+            "KolayBi\\RequestTracer\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "KolayBi\\RequestTracer\\RequestTracerServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "pint": "./vendor/bin/pint --dirty --parallel"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

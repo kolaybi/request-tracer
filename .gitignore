@@ -6,10 +6,12 @@
 ### Laravel template
 /vendor/
 node_modules/
+composer.lock
 npm-debug.log
 yarn-error.log
 
 storage/*.key
+storage/logs/*.log
 storage/pail
 .env
 .env.backup
@@ -17,7 +19,7 @@ Homestead.yaml
 Homestead.json
 /.vagrant
 .phpunit.result.cache
-/.phpunit.cache
+.phpunit.cache
 
 /public/hot
 /public/build
