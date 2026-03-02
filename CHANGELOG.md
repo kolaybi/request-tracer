@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.0.1](https://github.com/kolaybi/request-tracer/compare/v1.0.0...v1.0.1)  (2026-03-02)
+
+### Added
+- Opt-in sensitive masking for headers and payloads via `mask_sensitive`, `mask_value`, and `sensitive_keys` config options
+
+### Changed
+- Store outgoing HTTP trace metadata on request attributes instead of `X-Trace-*` headers
+- Normalize SOAP response headers and bodies before persisting traces
+
+### Fixed
+- Respect max body size truncation for very small limits
+- Validate `--chunk` for `request-tracer:purge` to avoid infinite loops
+- Safely capture incoming response size for streamed or binary responses
+
 ## [v1.0.0](https://github.com/kolaybi/request-tracer/commits/v1.0.0)  (Unreleased)
 
 ### Added

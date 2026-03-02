@@ -270,4 +270,4 @@ Please see [CONTRIBUTING](https://github.com/kolaybi/.github/blob/master/CONTRIB
 
 ## License
 
-Proprietary. Please see [License File](LICENSE.md) for more information.
+Please see [License File](LICENSE.md) for more information.
