@@ -24,7 +24,7 @@ php artisan migrate
 ## Configuration
 
 ```php
-// config/request-tracer.php
+// config/kolaybi/request-tracer.php
 
 return [
     'connection'       => env('REQUEST_TRACER_DB_CONNECTION'),
