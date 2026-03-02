@@ -168,8 +168,14 @@ class TraceHelper
 
         if ($maxSize > 0 && null !== $body && strlen($body) > $maxSize) {
             $suffix = '... [truncated]';
+            $suffixLength = strlen($suffix);
 
-            return substr($body, 0, $maxSize - strlen($suffix)) . $suffix;
+            // Keep body size within configured max for very small limits.
+            if ($maxSize <= $suffixLength) {
+                return substr($body, 0, $maxSize);
+            }
+
+            return substr($body, 0, $maxSize - $suffixLength) . $suffix;
         }
 
         return $body;
