@@ -27,6 +27,10 @@ class TraceHelper
 
     public static function normalizeHeaders(array|string $headers): string
     {
+        if (self::shouldMaskSensitive()) {
+            $headers = self::maskHeaders($headers);
+        }
+
         return is_array($headers)
             ? json_encode($headers, JSON_UNESCAPED_SLASHES)
             : $headers;
@@ -34,7 +38,123 @@ class TraceHelper
 
     public static function normalizeBody(string $body): ?string
     {
-        return self::truncateBody(self::sanitizeBody($body));
+        $body = self::sanitizeBody($body);
+
+        if (self::shouldMaskSensitive()) {
+            $body = self::maskBody($body);
+        }
+
+        return self::truncateBody($body);
+    }
+
+    private static function shouldMaskSensitive(): bool
+    {
+        return (bool) config('request-tracer.mask_sensitive', false);
+    }
+
+    private static function maskValue(): string
+    {
+        return (string) config('request-tracer.mask_value', '[REDACTED]');
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function sensitiveKeys(): array
+    {
+        $keys = config('request-tracer.sensitive_keys', []);
+
+        if (is_string($keys)) {
+            $keys = explode(',', $keys);
+        }
+
+        if (!is_array($keys)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn(mixed $key): string => str_replace('_', '-', strtolower(trim((string) $key))),
+            $keys,
+        )));
+    }
+
+    private static function isSensitiveKey(int|string $key): bool
+    {
+        if (!is_string($key)) {
+            return false;
+        }
+
+        $normalized = str_replace('_', '-', strtolower(trim($key)));
+
+        return in_array($normalized, self::sensitiveKeys(), true);
+    }
+
+    private static function maskHeaders(array|string $headers): array|string
+    {
+        if (is_array($headers)) {
+            return self::maskArrayByKey($headers);
+        }
+
+        $lines = preg_split("/\r\n|\n|\r/", $headers) ?: [];
+        $maskValue = self::maskValue();
+
+        foreach ($lines as $index => $line) {
+            $parts = explode(':', $line, 2);
+
+            if (2 !== count($parts)) {
+                continue;
+            }
+
+            $headerName = trim($parts[0]);
+
+            if (self::isSensitiveKey($headerName)) {
+                $lines[$index] = "{$headerName}: {$maskValue}";
+            }
+        }
+
+        return implode(PHP_EOL, $lines);
+    }
+
+    private static function maskBody(string $body): string
+    {
+        if ('' === $body) {
+            return $body;
+        }
+
+        $decoded = json_decode($body, true);
+
+        if (JSON_ERROR_NONE === json_last_error() && is_array($decoded)) {
+            $encoded = json_encode(self::maskArrayByKey($decoded), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+            return false === $encoded ? $body : $encoded;
+        }
+
+        if (str_contains($body, '=') && !str_contains($body, '{') && !str_contains($body, '<')) {
+            parse_str(ltrim($body, '?'), $parsed);
+
+            if (is_array($parsed) && [] !== $parsed) {
+                return http_build_query(self::maskArrayByKey($parsed));
+            }
+        }
+
+        return $body;
+    }
+
+    private static function maskArrayByKey(array $values): array
+    {
+        foreach ($values as $key => $value) {
+            if (self::isSensitiveKey($key)) {
+                $values[$key] = self::maskValue();
+
+                continue;
+            }
+
+            if (is_array($value)) {
+                $values[$key] = self::maskArrayByKey($value);
+            }
+        }
+
+        return $values;
     }
 
     private static function sanitizeBody(string $body): string

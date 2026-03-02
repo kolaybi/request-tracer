@@ -29,11 +29,22 @@ php artisan migrate
 return [
     'connection'       => env('REQUEST_TRACER_DB_CONNECTION'),
     'schema'           => env('REQUEST_TRACER_DB_SCHEMA'),
+
     'queue_connection' => env('REQUEST_TRACER_QUEUE_CONNECTION', 'redis'),
     'queue'            => env('REQUEST_TRACER_QUEUE', 'request_logging'),
+
     'tenant_column'    => 'tenant_id',
+
     'max_body_size'    => (int) env('REQUEST_TRACER_MAX_BODY_SIZE', 0),
     'retention_days'   => (int) env('REQUEST_TRACER_RETENTION_DAYS', 0),
+
+    'mask_sensitive'   => (bool) env('REQUEST_TRACER_MASK_SENSITIVE', false),
+    'mask_value'       => env('REQUEST_TRACER_MASK_VALUE', '[REDACTED]'),
+    'sensitive_keys'   => env(
+        'REQUEST_TRACER_SENSITIVE_KEYS',
+        'authorization,proxy-authorization,cookie,set-cookie,x-api-key,api-key,apikey,token,access_token,refresh_token,id_token,password,passcode,secret,client_secret,private_key',
+    ),
+
     'context_provider' => null,
 
     'outgoing' => [
@@ -51,6 +62,8 @@ return [
     ],
 ];
 ```
+
+If `REQUEST_TRACER_MASK_SENSITIVE=true`, matching keys in headers and JSON/form payloads are masked before storage.
 
 ## Middleware
 

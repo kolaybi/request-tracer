@@ -19,6 +19,14 @@ return [
     'max_body_size'    => (int) env('REQUEST_TRACER_MAX_BODY_SIZE', 0), // 0 = unlimited
     'retention_days'   => (int) env('REQUEST_TRACER_RETENTION_DAYS', 0), // 0 = forever
 
+    // Masking options
+    'mask_sensitive'   => (bool) env('REQUEST_TRACER_MASK_SENSITIVE', false),
+    'mask_value'       => env('REQUEST_TRACER_MASK_VALUE', '[REDACTED]'),
+    'sensitive_keys'   => env(
+        'REQUEST_TRACER_SENSITIVE_KEYS',
+        'authorization,proxy-authorization,cookie,set-cookie,x-api-key,api-key,apikey,token,access_token,refresh_token,id_token,password,passcode,secret,client_secret,private_key',
+    ),
+
     // Context provider (app-specific: tenant, user, server info)
     'context_provider' => null, // class-string<TraceContextProvider>
 
