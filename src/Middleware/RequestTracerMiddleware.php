@@ -16,7 +16,7 @@ class RequestTracerMiddleware
     {
         Context::add('trace_id', (string) Str::ulid());
 
-        $incomingEnabled = config('request-tracer.incoming.enabled', false);
+        $incomingEnabled = config('kolaybi.request-tracer.incoming.enabled', false);
         $start = $incomingEnabled ? Timestamp::now() : null;
 
         $response = $next($request);

@@ -17,8 +17,8 @@ class TraceInspectCommand extends Command
     {
         $id = $this->argument('id');
 
-        $incomingModel = config('request-tracer.incoming.model', IncomingRequestTrace::class);
-        $outgoingModel = config('request-tracer.outgoing.model', OutgoingRequestTrace::class);
+        $incomingModel = config('kolaybi.request-tracer.incoming.model', IncomingRequestTrace::class);
+        $outgoingModel = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
 
         $trace = $outgoingModel::find($id);
         $type = 'OUTGOING';
@@ -49,7 +49,7 @@ class TraceInspectCommand extends Command
 
     private function renderMetadata(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): void
     {
-        $tenantColumn = config('request-tracer.tenant_column', 'tenant_id');
+        $tenantColumn = config('kolaybi.request-tracer.tenant_column', 'tenant_id');
 
         $this->components->twoColumnDetail('<fg=gray>Type</>', $type);
         $this->components->twoColumnDetail('<fg=gray>Method</>', $trace->method ?? '—');

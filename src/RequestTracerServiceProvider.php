@@ -27,10 +27,10 @@ class RequestTracerServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/request-tracer.php', 'request-tracer');
+        $this->mergeConfigFrom(__DIR__ . '/../config/request-tracer.php', 'kolaybi.request-tracer');
 
         $this->app->singleton(TraceContextProvider::class, function () {
-            $class = config('request-tracer.context_provider');
+            $class = config('kolaybi.request-tracer.context_provider');
 
             return $class ? $this->app->make($class) : new NullContextProvider();
         });
@@ -41,15 +41,17 @@ class RequestTracerServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+
         $this->publishesMigrations([
             __DIR__ . '/../database/migrations' => database_path('migrations'),
-        ]);
+        ], 'request-tracer-migrations');
 
         $this->publishes([
-            __DIR__ . '/../config/request-tracer.php' => config_path('request-tracer.php'),
+            __DIR__ . '/../config/request-tracer.php' => config_path('kolaybi/request-tracer.php'),
         ], 'request-tracer-config');
 
-        if (config('request-tracer.outgoing.enabled', true)) {
+        if (config('kolaybi.request-tracer.outgoing.enabled', true)) {
             Http::mixin(new HttpTracingMixin());
 
             Event::listen(IlluminateRequestSending::class, HttpRequestSendingListener::class);

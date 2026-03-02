@@ -15,7 +15,7 @@ class IncomingTraceRecorder
     public function record(Request $request, Response $response, string $start, string $end): void
     {
         $contextProvider = app(TraceContextProvider::class);
-        $tenantColumn = config('request-tracer.tenant_column', 'tenant_id');
+        $tenantColumn = config('kolaybi.request-tracer.tenant_column', 'tenant_id');
 
         $attributes = [
             $tenantColumn       => $contextProvider->tenantId(),
@@ -39,14 +39,14 @@ class IncomingTraceRecorder
             'response_size'     => $this->resolveResponseSize($response),
         ];
 
-        $modelClass = config('request-tracer.incoming.model', IncomingRequestTrace::class);
+        $modelClass = config('kolaybi.request-tracer.incoming.model', IncomingRequestTrace::class);
 
         TraceHelper::dispatchTrace($attributes, $modelClass);
     }
 
     private function captureResponseBody(Response $response): ?string
     {
-        if (!config('request-tracer.incoming.capture_response_body', false)) {
+        if (!config('kolaybi.request-tracer.incoming.capture_response_body', false)) {
             return null;
         }
 

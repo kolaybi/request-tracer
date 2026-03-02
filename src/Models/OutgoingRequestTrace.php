@@ -19,13 +19,13 @@ class OutgoingRequestTrace extends Model
 
     public function getConnectionName(): ?string
     {
-        return config('request-tracer.connection');
+        return config('kolaybi.request-tracer.connection');
     }
 
     public function getTable(): string
     {
-        $table = config('request-tracer.outgoing.table', 'outgoing_request_traces');
-        $schema = config('request-tracer.schema');
+        $table = config('kolaybi.request-tracer.outgoing.table', 'outgoing_request_traces');
+        $schema = config('kolaybi.request-tracer.schema');
 
         return $schema ? "{$schema}.{$table}" : $table;
     }

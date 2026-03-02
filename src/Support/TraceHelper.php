@@ -12,8 +12,8 @@ class TraceHelper
         $attributes['duration'] = self::calculateDuration($attributes['start'] ?? null, $attributes['end'] ?? null);
 
         StoreTraceJob::dispatch($attributes, $modelClass)
-            ->onConnection(config('request-tracer.queue_connection'))
-            ->onQueue(config('request-tracer.queue'));
+            ->onConnection(config('kolaybi.request-tracer.queue_connection'))
+            ->onQueue(config('kolaybi.request-tracer.queue'));
     }
 
     public static function calculateDuration(?string $start, ?string $end): ?int
@@ -49,12 +49,12 @@ class TraceHelper
 
     private static function shouldMaskSensitive(): bool
     {
-        return (bool) config('request-tracer.mask_sensitive', false);
+        return (bool) config('kolaybi.request-tracer.mask_sensitive', false);
     }
 
     private static function maskValue(): string
     {
-        return (string) config('request-tracer.mask_value', '[REDACTED]');
+        return (string) config('kolaybi.request-tracer.mask_value', '[REDACTED]');
     }
 
     /**
@@ -62,7 +62,7 @@ class TraceHelper
      */
     private static function sensitiveKeys(): array
     {
-        $keys = config('request-tracer.sensitive_keys', []);
+        $keys = config('kolaybi.request-tracer.sensitive_keys', []);
 
         if (is_string($keys)) {
             $keys = explode(',', $keys);
@@ -164,7 +164,7 @@ class TraceHelper
 
     private static function truncateBody(?string $body): ?string
     {
-        $maxSize = config('request-tracer.max_body_size', 0);
+        $maxSize = config('kolaybi.request-tracer.max_body_size', 0);
 
         if ($maxSize > 0 && null !== $body && strlen($body) > $maxSize) {
             $suffix = '... [truncated]';

@@ -18,8 +18,8 @@ class TraceWaterfallCommand extends Command
     {
         $traceId = $this->argument('trace_id');
 
-        $incomingModel = config('request-tracer.incoming.model', IncomingRequestTrace::class);
-        $outgoingModel = config('request-tracer.outgoing.model', OutgoingRequestTrace::class);
+        $incomingModel = config('kolaybi.request-tracer.incoming.model', IncomingRequestTrace::class);
+        $outgoingModel = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
 
         $incomingTraces = $incomingModel::where('trace_id', $traceId)->orderBy('start')->get();
         $outgoingTraces = $outgoingModel::where('trace_id', $traceId)->orderBy('start')->get();
@@ -45,7 +45,7 @@ class TraceWaterfallCommand extends Command
 
     private function renderSummary(string $traceId, Collection $allTraces): void
     {
-        $tenantColumn = config('request-tracer.tenant_column', 'tenant_id');
+        $tenantColumn = config('kolaybi.request-tracer.tenant_column', 'tenant_id');
 
         $first = $allTraces->first()['trace'];
         $firstStart = $allTraces->min(fn($item) => $item['trace']->start);

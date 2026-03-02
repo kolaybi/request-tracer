@@ -25,7 +25,7 @@ abstract class AbstractTraceListener
     ): array {
         $contextProvider = app(TraceContextProvider::class);
         $urlParts = parse_url($url);
-        $tenantColumn = config('request-tracer.tenant_column', 'tenant_id');
+        $tenantColumn = config('kolaybi.request-tracer.tenant_column', 'tenant_id');
 
         return [
             $tenantColumn       => $contextProvider->tenantId(),
@@ -58,7 +58,7 @@ abstract class AbstractTraceListener
             return;
         }
 
-        $modelClass = config('request-tracer.outgoing.model', OutgoingRequestTrace::class);
+        $modelClass = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
 
         TraceHelper::dispatchTrace($attributes, $modelClass);
     }
@@ -121,7 +121,7 @@ abstract class AbstractTraceListener
 
     private function shouldSample(): bool
     {
-        $rate = config('request-tracer.outgoing.sample_rate', 1.0);
+        $rate = config('kolaybi.request-tracer.outgoing.sample_rate', 1.0);
 
         return $rate >= 1.0 || (mt_rand() / mt_getrandmax()) < $rate;
     }

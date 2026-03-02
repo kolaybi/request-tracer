@@ -16,7 +16,7 @@ class PurgeTracesCommand extends Command
 
     public function handle(): int
     {
-        $days = (int) ($this->option('days') ?? config('request-tracer.retention_days', 0));
+        $days = (int) ($this->option('days') ?? config('kolaybi.request-tracer.retention_days', 0));
 
         if ($days <= 0) {
             $this->warn('Retention not configured. Use --days=N or set REQUEST_TRACER_RETENTION_DAYS.');
@@ -33,11 +33,11 @@ class PurgeTracesCommand extends Command
             return self::FAILURE;
         }
 
-        $outgoingModel = config('request-tracer.outgoing.model', OutgoingRequestTrace::class);
+        $outgoingModel = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
         $outgoingDeleted = $this->purgeInChunks($outgoingModel, $cutoff, $chunk);
         $this->info("Purged {$outgoingDeleted} outgoing traces older than {$days} days.");
 
-        $incomingModel = config('request-tracer.incoming.model', IncomingRequestTrace::class);
+        $incomingModel = config('kolaybi.request-tracer.incoming.model', IncomingRequestTrace::class);
         $incomingDeleted = $this->purgeInChunks($incomingModel, $cutoff, $chunk);
         $this->info("Purged {$incomingDeleted} incoming traces older than {$days} days.");
 

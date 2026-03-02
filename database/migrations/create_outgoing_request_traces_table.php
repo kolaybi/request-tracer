@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class () extends Migration {
     public function up(): void
     {
-        Schema::connection(config('request-tracer.connection'))
-            ->create(config('request-tracer.outgoing.table', 'outgoing_request_traces'), function (Blueprint $table) {
-                $tenantColumn = config('request-tracer.tenant_column', 'tenant_id');
+        Schema::connection(config('kolaybi.request-tracer.connection'))
+            ->create(config('kolaybi.request-tracer.outgoing.table', 'outgoing_request_traces'), function (Blueprint $table) {
+                $tenantColumn = config('kolaybi.request-tracer.tenant_column', 'tenant_id');
 
                 $table->ulid('id')->primary();
                 $table->timestamp('created_at')->nullable()->index();
@@ -43,7 +43,7 @@ return new class () extends Migration {
 
     public function down(): void
     {
-        Schema::connection(config('request-tracer.connection'))
-            ->dropIfExists(config('request-tracer.outgoing.table', 'outgoing_request_traces'));
+        Schema::connection(config('kolaybi.request-tracer.connection'))
+            ->dropIfExists(config('kolaybi.request-tracer.outgoing.table', 'outgoing_request_traces'));
     }
 };
