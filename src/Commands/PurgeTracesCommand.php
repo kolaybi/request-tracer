@@ -27,6 +27,12 @@ class PurgeTracesCommand extends Command
         $cutoff = now()->subDays($days);
         $chunk = (int) $this->option('chunk');
 
+        if ($chunk < 1) {
+            $this->warn('Chunk must be a positive integer. Use --chunk=N where N >= 1.');
+
+            return self::FAILURE;
+        }
+
         $outgoingModel = config('request-tracer.outgoing.model', OutgoingRequestTrace::class);
         $outgoingDeleted = $this->purgeInChunks($outgoingModel, $cutoff, $chunk);
         $this->info("Purged {$outgoingDeleted} outgoing traces older than {$days} days.");
