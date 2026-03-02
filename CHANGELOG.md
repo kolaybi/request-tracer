@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.0.2](https://github.com/kolaybi/request-tracer/compare/v1.0.1...v1.0.2)  (2026-03-02)
+
+### Added
+- Auto-load package migrations
+
+### Changed
+- Publish config to `config/kolaybi/request-tracer.php`
+
 ## [v1.0.1](https://github.com/kolaybi/request-tracer/compare/v1.0.0...v1.0.1)  (2026-03-02)
 
 ### Added
