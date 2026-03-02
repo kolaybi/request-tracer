@@ -36,7 +36,7 @@ class IncomingTraceRecorder
             'status'            => $response->getStatusCode(),
             'response_headers'  => TraceHelper::normalizeHeaders($response->headers->all()),
             'response_body'     => $this->captureResponseBody($response),
-            'response_size'     => strlen($response->getContent()),
+            'response_size'     => $this->resolveResponseSize($response),
         ];
 
         $modelClass = config('request-tracer.incoming.model', IncomingRequestTrace::class);
@@ -50,6 +50,29 @@ class IncomingTraceRecorder
             return null;
         }
 
-        return TraceHelper::normalizeBody($response->getContent());
+        $content = $response->getContent();
+
+        if (false === $content) {
+            return null;
+        }
+
+        return TraceHelper::normalizeBody($content);
+    }
+
+    private function resolveResponseSize(Response $response): ?int
+    {
+        $content = $response->getContent();
+
+        if (false !== $content) {
+            return strlen($content);
+        }
+
+        $contentLength = $response->headers->get('Content-Length');
+
+        if (!is_numeric($contentLength)) {
+            return null;
+        }
+
+        return max(0, (int) $contentLength);
     }
 }
