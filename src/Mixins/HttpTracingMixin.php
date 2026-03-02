@@ -16,7 +16,7 @@ class HttpTracingMixin
     public function traceOf(): Closure
     {
         return function (?string $channel) {
-            return $this->withHeaders(['X-Trace-Channel' => $channel]);
+            return $this->withAttributes(['request_tracer' => ['channel' => $channel]]);
         };
     }
 
@@ -26,7 +26,7 @@ class HttpTracingMixin
     public function channel(): Closure
     {
         return function (?string $channel) {
-            return $this->withHeaders(['X-Trace-Channel' => $channel]);
+            return $this->withAttributes(['request_tracer' => ['channel' => $channel]]);
         };
     }
 
@@ -36,9 +36,7 @@ class HttpTracingMixin
     public function withTraceExtra(): Closure
     {
         return function (array|string|null $extra) {
-            $value = is_array($extra) ? json_encode($extra, JSON_UNESCAPED_SLASHES) : $extra;
-
-            return $this->withHeaders(['X-Trace-Extra' => $value]);
+            return $this->withAttributes(['request_tracer' => ['extra' => $extra]]);
         };
     }
 }

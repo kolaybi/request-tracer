@@ -12,6 +12,7 @@ class ConnectionFailedListener extends AbstractTraceListener
     {
         $request = $event->request;
         $exception = $event->exception;
+        $traceAttributes = $this->extractTraceAttributes($request->attributes());
 
         $attributes = array_merge(
             $this->buildTraceAttributes(
@@ -19,9 +20,9 @@ class ConnectionFailedListener extends AbstractTraceListener
                 method: $request->method(),
                 body: $request->body(),
                 headers: $this->stripTraceHeaders($request->headers()),
-                channel: $request->header('X-Trace-Channel')[0] ?? null,
-                extra: $request->header('X-Trace-Extra')[0] ?? null,
-                start: $request->header('X-Trace-Started-At')[0] ?? null,
+                channel: $this->extractTraceString($traceAttributes['channel'] ?? null) ?? ($request->header('X-Trace-Channel')[0] ?? null),
+                extra: $traceAttributes['extra'] ?? ($request->header('X-Trace-Extra')[0] ?? null),
+                start: $this->resolveStartedAt($request, $traceAttributes),
             ),
             [
                 'end'       => Timestamp::now(),
@@ -33,14 +34,5 @@ class ConnectionFailedListener extends AbstractTraceListener
         );
 
         $this->persistTrace($attributes);
-    }
-
-    private function stripTraceHeaders(array $headers): array
-    {
-        return array_filter(
-            $headers,
-            fn(string $key) => !str_starts_with(strtolower($key), 'x-trace-'),
-            ARRAY_FILTER_USE_KEY,
-        );
     }
 }

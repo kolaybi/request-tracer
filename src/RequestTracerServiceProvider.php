@@ -3,6 +3,7 @@
 namespace KolayBi\RequestTracer;
 
 use Illuminate\Http\Client\Events\ConnectionFailed as IlluminateConnectionFailed;
+use Illuminate\Http\Client\Events\RequestSending as IlluminateRequestSending;
 use Illuminate\Http\Client\Events\ResponseReceived as IlluminateResponseReceived;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
@@ -15,13 +16,11 @@ use KolayBi\RequestTracer\Contracts\TraceContextProvider;
 use KolayBi\RequestTracer\Events\Soap\ConnectionFailedEvent as SoapConnectionFailedEvent;
 use KolayBi\RequestTracer\Events\Soap\ResponseReceivedEvent as SoapResponseReceivedEvent;
 use KolayBi\RequestTracer\Listeners\Http\ConnectionFailedListener as HttpConnectionFailedListener;
+use KolayBi\RequestTracer\Listeners\Http\RequestSendingListener as HttpRequestSendingListener;
 use KolayBi\RequestTracer\Listeners\Http\ResponseReceivedListener as HttpResponseReceivedListener;
 use KolayBi\RequestTracer\Listeners\Soap\ConnectionFailedListener as SoapConnectionFailedListener;
 use KolayBi\RequestTracer\Listeners\Soap\ResponseReceivedListener as SoapResponseReceivedListener;
 use KolayBi\RequestTracer\Mixins\HttpTracingMixin;
-use KolayBi\RequestTracer\Support\Timestamp;
-use Psr\Http\Message\RequestInterface;
-use Psr\Http\Message\ResponseInterface;
 use ReflectionException;
 
 class RequestTracerServiceProvider extends ServiceProvider
@@ -53,10 +52,7 @@ class RequestTracerServiceProvider extends ServiceProvider
         if (config('request-tracer.outgoing.enabled', true)) {
             Http::mixin(new HttpTracingMixin());
 
-            Http::globalRequestMiddleware(fn(RequestInterface $request) => $request->withHeader('X-Trace-Started-At', Timestamp::now()));
-
-            Http::globalResponseMiddleware(fn(ResponseInterface $response) => $response->withHeader('X-Trace-Finished-At', Timestamp::now()));
-
+            Event::listen(IlluminateRequestSending::class, HttpRequestSendingListener::class);
             Event::listen(IlluminateResponseReceived::class, HttpResponseReceivedListener::class);
             Event::listen(IlluminateConnectionFailed::class, HttpConnectionFailedListener::class);
             Event::listen(SoapResponseReceivedEvent::class, SoapResponseReceivedListener::class);

@@ -13,6 +13,7 @@ class ResponseReceivedListener extends AbstractTraceListener
     {
         $request = $event->request;
         $response = $event->response;
+        $traceAttributes = $this->extractTraceAttributes($request->attributes());
 
         $attributes = array_merge(
             $this->buildTraceAttributes(
@@ -20,12 +21,12 @@ class ResponseReceivedListener extends AbstractTraceListener
                 method: $request->method(),
                 body: $request->body(),
                 headers: $this->stripTraceHeaders($request->headers()),
-                channel: $request->header('X-Trace-Channel')[0] ?? null,
-                extra: $request->header('X-Trace-Extra')[0] ?? null,
-                start: $request->header('X-Trace-Started-At')[0] ?? null,
+                channel: $this->extractTraceString($traceAttributes['channel'] ?? null) ?? ($request->header('X-Trace-Channel')[0] ?? null),
+                extra: $traceAttributes['extra'] ?? ($request->header('X-Trace-Extra')[0] ?? null),
+                start: $this->resolveStartedAt($request, $traceAttributes),
             ),
             [
-                'end'              => $response->header('X-Trace-Finished-At') ?? Timestamp::now(),
+                'end'              => Timestamp::now(),
                 'protocol'         => parse_url($request->url(), PHP_URL_SCHEME) ?? 'http',
                 'status'           => $response->status(),
                 'response_body'    => TraceHelper::normalizeBody($response->body()),
@@ -36,14 +37,5 @@ class ResponseReceivedListener extends AbstractTraceListener
         );
 
         $this->persistTrace($attributes);
-    }
-
-    private function stripTraceHeaders(array $headers): array
-    {
-        return array_filter(
-            $headers,
-            fn(string $key) => !str_starts_with(strtolower($key), 'x-trace-'),
-            ARRAY_FILTER_USE_KEY,
-        );
     }
 }

@@ -2,10 +2,13 @@
 
 namespace KolayBi\RequestTracer\Listeners;
 
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Contracts\TraceContextProvider;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
+use KolayBi\RequestTracer\Support\RequestTimingStore;
+use KolayBi\RequestTracer\Support\Timestamp;
 use KolayBi\RequestTracer\Support\TraceHelper;
 use Throwable;
 
@@ -75,6 +78,45 @@ abstract class AbstractTraceListener
         }
 
         return $traceId;
+    }
+
+    protected function extractTraceAttributes(array $attributes): array
+    {
+        $traceAttributes = $attributes['request_tracer'] ?? [];
+
+        return is_array($traceAttributes) ? $traceAttributes : [];
+    }
+
+    protected function extractTraceString(mixed $value): ?string
+    {
+        if (is_array($value)) {
+            $value = end($value);
+        }
+
+        if (null === $value) {
+            return null;
+        }
+
+        $value = (string) $value;
+
+        return '' === $value ? null : $value;
+    }
+
+    protected function resolveStartedAt(Request $request, array $traceAttributes): string
+    {
+        return $this->extractTraceString($traceAttributes['started_at'] ?? null)
+            ?? RequestTimingStore::pull($request->toPsrRequest())
+            ?? ($request->header('X-Trace-Started-At')[0] ?? null)
+            ?? Timestamp::now();
+    }
+
+    protected function stripTraceHeaders(array $headers): array
+    {
+        return array_filter(
+            $headers,
+            fn(string $key) => !str_starts_with(strtolower($key), 'x-trace-'),
+            ARRAY_FILTER_USE_KEY,
+        );
     }
 
     private function shouldSample(): bool
