@@ -5,6 +5,7 @@ namespace KolayBi\RequestTracer\Listeners\Soap;
 use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Events\Soap\ResponseReceivedEvent;
 use KolayBi\RequestTracer\Listeners\AbstractTraceListener;
+use KolayBi\RequestTracer\Support\TraceHelper;
 use SoapClient;
 use Throwable;
 
@@ -29,8 +30,8 @@ class ResponseReceivedListener extends AbstractTraceListener
                 'protocol'         => 'soap',
                 'query'            => $this->extractAction($event->action, $event->request),
                 'status'           => $this->extractStatusCode($soapClient),
-                'response_body'    => $event->response,
-                'response_headers' => $soapClient->__getLastResponseHeaders() ?? '',
+                'response_body'    => null === $event->response ? null : TraceHelper::normalizeBody($event->response),
+                'response_headers' => TraceHelper::normalizeHeaders($soapClient->__getLastResponseHeaders() ?? ''),
                 'response_size'    => strlen($event->response ?? ''),
             ],
         );
