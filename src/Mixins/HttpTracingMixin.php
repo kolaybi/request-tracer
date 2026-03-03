@@ -25,9 +25,7 @@ class HttpTracingMixin
      */
     public function channel(): Closure
     {
-        return function (?string $channel) {
-            return $this->withAttributes(['request_tracer' => ['channel' => $channel]]);
-        };
+        return $this->traceOf();
     }
 
     /**
