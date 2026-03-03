@@ -12,6 +12,7 @@ use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 class TraceWaterfallCommand extends Command
 {
     use BuildsEndpoint;
+
     protected $signature = 'request-tracer:waterfall {trace_id}';
 
     protected $description = 'Display a chronological waterfall of all traces for a given trace ID';

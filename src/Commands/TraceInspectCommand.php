@@ -11,6 +11,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class TraceInspectCommand extends Command
 {
     use BuildsEndpoint;
+
     protected $signature = 'request-tracer:inspect {id} {--full}';
 
     protected $description = 'Inspect a single trace record by its ULID';

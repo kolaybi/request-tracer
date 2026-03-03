@@ -2,8 +2,8 @@
 
 namespace KolayBi\RequestTracer\Commands;
 
+use Carbon\CarbonInterface;
 use Illuminate\Console\Command;
-use Illuminate\Support\Carbon;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
@@ -48,7 +48,7 @@ class PurgeTracesCommand extends Command
     /**
      * @param class-string<IncomingRequestTrace|OutgoingRequestTrace> $modelClass
      */
-    private function purgeInChunks(string $modelClass, Carbon $cutoff, int $chunk): int
+    private function purgeInChunks(string $modelClass, CarbonInterface $cutoff, int $chunk): int
     {
         $total = 0;
 
