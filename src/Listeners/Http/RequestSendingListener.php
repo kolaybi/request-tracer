@@ -18,7 +18,7 @@ class RequestSendingListener
             $trace = [];
         }
 
-        if (!isset($trace['started_at']) || null === $trace['started_at'] || '' === (string) $trace['started_at']) {
+        if (empty($trace['started_at'])) {
             $trace['started_at'] = Timestamp::now();
         }
 
