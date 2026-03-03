@@ -27,7 +27,7 @@ class TraceWaterfallCommand extends Command
         $incomingTraces = $incomingModel::where('trace_id', $traceId)->orderBy('start')->get();
         $outgoingTraces = $outgoingModel::where('trace_id', $traceId)->orderBy('start')->get();
 
-        $allTraces = $incomingTraces
+        $allTraces = $incomingTraces->toBase()
             ->map(fn($trace) => ['trace' => $trace, 'type' => 'INCOMING'])
             ->merge($outgoingTraces->map(fn($trace) => ['trace' => $trace, 'type' => 'OUTGOING']))
             ->sortBy(fn($item) => $item['trace']->start ?? '')
