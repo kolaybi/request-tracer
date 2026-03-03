@@ -20,8 +20,8 @@ class ConnectionFailedListener extends AbstractTraceListener
                 method: $request->method(),
                 body: $request->body(),
                 headers: $this->stripTraceHeaders($request->headers()),
-                channel: $this->extractTraceString($traceAttributes['channel'] ?? null) ?? ($request->header('X-Trace-Channel')[0] ?? null),
-                extra: $traceAttributes['extra'] ?? ($request->header('X-Trace-Extra')[0] ?? null),
+                channel: $this->extractTraceString($traceAttributes['channel'] ?? null),
+                extra: $traceAttributes['extra'] ?? null,
                 start: $this->resolveStartedAt($request, $traceAttributes),
             ),
             [

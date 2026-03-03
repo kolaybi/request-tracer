@@ -44,7 +44,7 @@ abstract class AbstractTraceListener
             'request_size'      => strlen($body),
             'response_body'     => null,
             'response_headers'  => null,
-            'response_size'     => 0,
+            'response_size'     => null,
             'message'           => null,
             'exception'         => null,
             'stats'             => null,
@@ -106,7 +106,6 @@ abstract class AbstractTraceListener
     {
         return $this->extractTraceString($traceAttributes['started_at'] ?? null)
             ?? RequestTimingStore::pull($request->toPsrRequest())
-            ?? ($request->header('X-Trace-Started-At')[0] ?? null)
             ?? Timestamp::now();
     }
 

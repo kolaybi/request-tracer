@@ -201,7 +201,7 @@ class TracingSoapClient extends SoapClient
 
     public function setOptions(array $options): static
     {
-        $this->options = array_merge($this->options ?? [], $options);
+        $this->options = array_merge($this->options, $options);
 
         return $this;
     }
