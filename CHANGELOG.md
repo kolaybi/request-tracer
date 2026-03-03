@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.1.0](https://github.com/kolaybi/request-tracer/compare/v1.0.2...v1.1.0)  (2026-03-03)
+
+### Added
+- Eloquent casts for integer columns on both trace models (`duration`, `status`, `request_size`, `response_size`, `user_id`, tenant column)
+- `tenant_cast` and `user_cast` config options — set to `'string'` for ULID/UUID keys
+- Added Test suite
+
+### Changed
+- Consolidate shared SOAP and endpoint logic into base classes
+
+### Fixed
+- Negative duration from clock drift no longer breaks inserts
+- SOAP one-way calls store `response_size` as `null` instead of `0`
+- Sensitive keys config is read fresh on each request instead of cached statically
+- Empty incoming trace collection no longer causes merge error
+- Purge command uses correct date type for retention cutoff
+
 ## [v1.0.2](https://github.com/kolaybi/request-tracer/compare/v1.0.1...v1.0.2)  (2026-03-02)
 
 ### Added

@@ -34,6 +34,8 @@ return [
     'queue'            => env('REQUEST_TRACER_QUEUE', 'request_logging'),
 
     'tenant_column'    => 'tenant_id',
+    'tenant_cast'      => 'integer', // 'integer', 'string', or any Eloquent cast type
+    'user_cast'        => 'integer', // 'integer', 'string', or any Eloquent cast type
 
     'max_body_size'    => (int) env('REQUEST_TRACER_MAX_BODY_SIZE', 0),
     'retention_days'   => (int) env('REQUEST_TRACER_RETENTION_DAYS', 0),
