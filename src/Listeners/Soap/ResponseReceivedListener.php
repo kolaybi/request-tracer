@@ -2,6 +2,7 @@
 
 namespace KolayBi\RequestTracer\Listeners\Soap;
 
+use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Events\Soap\ResponseReceivedEvent;
 use KolayBi\RequestTracer\Listeners\AbstractTraceListener;
 use KolayBi\RequestTracer\Support\TraceHelper;

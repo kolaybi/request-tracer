@@ -76,13 +76,21 @@ class TraceHelper
         }
 
         if (!is_array($keys)) {
-            return self::$cachedSensitiveKeys = [];
+            self::$cachedSensitiveKeys = [];
+
+            return self::$cachedSensitiveKeys;
         }
 
-        return self::$cachedSensitiveKeys = array_values(array_filter(array_map(
-            static fn(mixed $key): string => str_replace('_', '-', strtolower(trim((string) $key))),
-            $keys,
-        )));
+        self::$cachedSensitiveKeys = array_values(
+            array_filter(
+                array_map(
+                    static fn(mixed $key): string => str_replace('_', '-', strtolower(trim((string) $key))),
+                    $keys,
+                ),
+            ),
+        );
+
+        return self::$cachedSensitiveKeys;
     }
 
     private static function isSensitiveKey(int|string $key): bool
