@@ -31,7 +31,7 @@ class ResponseReceivedListener extends AbstractTraceListener
                 'status'           => $this->extractStatusCode($soapClient),
                 'response_body'    => null === $event->response ? null : TraceHelper::normalizeBody($event->response),
                 'response_headers' => TraceHelper::normalizeHeaders($soapClient->__getLastResponseHeaders() ?? ''),
-                'response_size'    => strlen($event->response ?? ''),
+                'response_size'    => null !== $event->response ? strlen($event->response) : null,
             ],
         );
 

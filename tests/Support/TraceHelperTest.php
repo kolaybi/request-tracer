@@ -7,11 +7,6 @@ use KolayBi\RequestTracer\Support\TraceHelper;
 
 beforeEach(function () {
     Queue::fake();
-
-    // Reset the static cache between tests.
-    $reflection = new ReflectionClass(TraceHelper::class);
-    $property = $reflection->getProperty('cachedSensitiveKeys');
-    $property->setValue(null, null);
 });
 
 // --- dispatchTrace ---
@@ -43,6 +38,12 @@ it('returns null when start is null', function () {
 
 it('returns null when end is null', function () {
     expect(TraceHelper::calculateDuration('2026-01-01 00:00:00.000000', null))->toBeNull();
+});
+
+it('returns 0 when end is before start', function () {
+    $result = TraceHelper::calculateDuration('2026-01-01 00:00:01.000000', '2026-01-01 00:00:00.000000');
+
+    expect($result)->toBe(0);
 });
 
 // --- normalizeHeaders ---
@@ -190,24 +191,6 @@ it('handles very small max_body_size without suffix', function () {
 
     expect($result)->toBe('aaaaa')
         ->and(strlen($result))->toBe(5);
-});
-
-it('caches sensitive keys across calls', function () {
-    config([
-        'kolaybi.request-tracer.mask_sensitive' => true,
-        'kolaybi.request-tracer.sensitive_keys' => 'authorization',
-    ]);
-
-    TraceHelper::normalizeHeaders(['Authorization' => ['token1']]);
-
-    // Change the config — should still use cached value
-    config(['kolaybi.request-tracer.sensitive_keys' => 'x-custom-key']);
-
-    $result = TraceHelper::normalizeHeaders(['Authorization' => ['token2']]);
-    $decoded = json_decode($result, true);
-
-    // Still masked because cached keys contain 'authorization'
-    expect($decoded['Authorization'])->toBe('[REDACTED]');
 });
 
 it('normalizes underscored sensitive keys to dashed', function () {

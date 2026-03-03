@@ -14,6 +14,8 @@ return [
 
     // Tenant column name (configurable: 'company_id', 'tenant_id', 'organization_id', etc.)
     'tenant_column'    => 'tenant_id',
+    'tenant_cast'      => 'integer', // Eloquent cast: 'integer', 'string', or any cast type
+    'user_cast'        => 'integer', // Eloquent cast: 'integer', 'string', or any cast type
 
     // Tracing options
     'max_body_size'    => (int) env('REQUEST_TRACER_MAX_BODY_SIZE', 0), // 0 = unlimited

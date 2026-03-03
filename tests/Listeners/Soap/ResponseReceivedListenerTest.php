@@ -113,6 +113,32 @@ it('extracts action from soap body when tempuri is empty', function () {
     Queue::assertPushed(StoreTraceJob::class, fn(StoreTraceJob $job) => 'CustomOperation' === $job->attributes['query']);
 });
 
+it('stores null response_size when response is null', function () {
+    $soapClient = Mockery::mock(SoapClient::class);
+    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('');
+    $soapClient->shouldReceive('__getLastResponseHeaders')->andReturn('');
+
+    $event = new ResponseReceivedEvent(
+        soapClient: $soapClient,
+        request: '<request/>',
+        location: 'https://soap.example.com/service',
+        action: 'http://tempuri.org/OneWay',
+        response: null,
+        channel: null,
+        extra: null,
+        start: '2026-01-01 00:00:00.000000',
+        end: '2026-01-01 00:00:00.100000',
+    );
+
+    $listener = new ResponseReceivedListener();
+    $listener->handle($event);
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return null === $job->attributes['response_size']
+            && null === $job->attributes['response_body'];
+    });
+});
+
 it('captures response size correctly', function () {
     $soapClient = Mockery::mock(SoapClient::class);
     $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('Content-Type: text/xml');

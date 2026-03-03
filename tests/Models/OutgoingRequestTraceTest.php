@@ -49,3 +49,38 @@ it('prepends schema to table name', function () {
 it('uses default table name from config fallback', function () {
     expect(new OutgoingRequestTrace()->getTable())->toBe('outgoing_request_traces');
 });
+
+it('casts integer columns to proper types', function () {
+    $model = new OutgoingRequestTrace();
+    $casts = $model->getCasts();
+
+    expect($casts)
+        ->toHaveKey('duration', 'integer')
+        ->toHaveKey('status', 'integer')
+        ->toHaveKey('request_size', 'integer')
+        ->toHaveKey('response_size', 'integer')
+        ->toHaveKey('user_id', 'integer')
+        ->toHaveKey('tenant_id', 'integer');
+});
+
+it('casts custom tenant column', function () {
+    config(['kolaybi.request-tracer.tenant_column' => 'company_id']);
+
+    $casts = new OutgoingRequestTrace()->getCasts();
+
+    expect($casts)->toHaveKey('company_id', 'integer')
+        ->not->toHaveKey('tenant_id');
+});
+
+it('uses configured tenant and user cast types', function () {
+    config([
+        'kolaybi.request-tracer.tenant_cast' => 'string',
+        'kolaybi.request-tracer.user_cast'   => 'string',
+    ]);
+
+    $casts = new OutgoingRequestTrace()->getCasts();
+
+    expect($casts)
+        ->toHaveKey('tenant_id', 'string')
+        ->toHaveKey('user_id', 'string');
+});

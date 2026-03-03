@@ -7,9 +7,6 @@ use KolayBi\RequestTracer\Jobs\StoreTraceJob;
 
 class TraceHelper
 {
-    /** @var array<int, string>|null */
-    private static ?array $cachedSensitiveKeys = null;
-
     public static function dispatchTrace(array $attributes, string $modelClass): void
     {
         $attributes['duration'] = self::calculateDuration($attributes['start'] ?? null, $attributes['end'] ?? null);
@@ -25,7 +22,7 @@ class TraceHelper
             return null;
         }
 
-        return (int) CarbonImmutable::parse($start)->diffInMilliseconds(CarbonImmutable::parse($end));
+        return max(0, (int) CarbonImmutable::parse($start)->diffInMilliseconds(CarbonImmutable::parse($end)));
     }
 
     public static function normalizeHeaders(array|string $headers): string
@@ -65,10 +62,6 @@ class TraceHelper
      */
     private static function sensitiveKeys(): array
     {
-        if (null !== self::$cachedSensitiveKeys) {
-            return self::$cachedSensitiveKeys;
-        }
-
         $keys = config('kolaybi.request-tracer.sensitive_keys', []);
 
         if (is_string($keys)) {
@@ -76,12 +69,10 @@ class TraceHelper
         }
 
         if (!is_array($keys)) {
-            self::$cachedSensitiveKeys = [];
-
-            return self::$cachedSensitiveKeys;
+            return [];
         }
 
-        self::$cachedSensitiveKeys = array_values(
+        return array_values(
             array_filter(
                 array_map(
                     static fn(mixed $key): string => str_replace('_', '-', strtolower(trim((string) $key))),
@@ -89,8 +80,6 @@ class TraceHelper
                 ),
             ),
         );
-
-        return self::$cachedSensitiveKeys;
     }
 
     private static function isSensitiveKey(int|string $key): bool

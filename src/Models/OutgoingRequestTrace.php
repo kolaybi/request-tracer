@@ -30,6 +30,20 @@ class OutgoingRequestTrace extends Model
         return $schema ? "{$schema}.{$table}" : $table;
     }
 
+    protected function casts(): array
+    {
+        $tenantColumn = config('kolaybi.request-tracer.tenant_column', 'tenant_id');
+
+        return [
+            'duration'      => 'integer',
+            'status'        => 'integer',
+            'request_size'  => 'integer',
+            'response_size' => 'integer',
+            $tenantColumn   => config('kolaybi.request-tracer.tenant_cast', 'integer'),
+            'user_id'       => config('kolaybi.request-tracer.user_cast', 'integer'),
+        ];
+    }
+
     protected static function boot(): void
     {
         parent::boot();
