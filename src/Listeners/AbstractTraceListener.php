@@ -119,6 +119,26 @@ abstract class AbstractTraceListener
         );
     }
 
+    protected function extractSoapAction(string $action, string $request): string
+    {
+        $extracted = Str::remove('http://tempuri.org/', $action);
+
+        return $extracted ?: $this->extractSoapBodyOperationName($request);
+    }
+
+    protected function extractSoapBodyOperationName(string $request): ?string
+    {
+        try {
+            $xml = simplexml_load_string($request);
+            $body = $xml->xpath('SOAP-ENV:Body')[0];
+            $operation = $body?->xpath('*')[0];
+
+            return $operation?->getName();
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
     private function shouldSample(): bool
     {
         $rate = config('kolaybi.request-tracer.outgoing.sample_rate', 1.0);

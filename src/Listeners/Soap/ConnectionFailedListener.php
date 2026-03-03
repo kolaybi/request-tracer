@@ -2,10 +2,8 @@
 
 namespace KolayBi\RequestTracer\Listeners\Soap;
 
-use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Events\Soap\ConnectionFailedEvent;
 use KolayBi\RequestTracer\Listeners\AbstractTraceListener;
-use Throwable;
 
 class ConnectionFailedListener extends AbstractTraceListener
 {
@@ -27,7 +25,7 @@ class ConnectionFailedListener extends AbstractTraceListener
             [
                 'end'       => $event->end,
                 'protocol'  => 'soap',
-                'query'     => $this->extractAction($event->action, $event->request),
+                'query'     => $this->extractSoapAction($event->action, $event->request),
                 'status'    => $exception->getCode(),
                 'message'   => $exception->getMessage(),
                 'exception' => $this->formatException($exception),
@@ -35,25 +33,5 @@ class ConnectionFailedListener extends AbstractTraceListener
         );
 
         $this->persistTrace($attributes);
-    }
-
-    private function extractAction(string $action, string $request): string
-    {
-        $extracted = Str::remove('http://tempuri.org/', $action);
-
-        return $extracted ?: $this->extractSoapBodyOperationName($request);
-    }
-
-    private function extractSoapBodyOperationName(string $request): ?string
-    {
-        try {
-            $xml = simplexml_load_string($request);
-            $body = $xml->xpath('SOAP-ENV:Body')[0];
-            $operation = $body?->xpath('*')[0];
-
-            return $operation?->getName();
-        } catch (Throwable) {
-            return null;
-        }
     }
 }
