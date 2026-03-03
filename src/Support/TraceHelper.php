@@ -7,6 +7,9 @@ use KolayBi\RequestTracer\Jobs\StoreTraceJob;
 
 class TraceHelper
 {
+    /** @var array<int, string>|null */
+    private static ?array $cachedSensitiveKeys = null;
+
     public static function dispatchTrace(array $attributes, string $modelClass): void
     {
         $attributes['duration'] = self::calculateDuration($attributes['start'] ?? null, $attributes['end'] ?? null);
@@ -62,6 +65,10 @@ class TraceHelper
      */
     private static function sensitiveKeys(): array
     {
+        if (null !== self::$cachedSensitiveKeys) {
+            return self::$cachedSensitiveKeys;
+        }
+
         $keys = config('kolaybi.request-tracer.sensitive_keys', []);
 
         if (is_string($keys)) {
@@ -69,10 +76,10 @@ class TraceHelper
         }
 
         if (!is_array($keys)) {
-            return [];
+            return self::$cachedSensitiveKeys = [];
         }
 
-        return array_values(array_filter(array_map(
+        return self::$cachedSensitiveKeys = array_values(array_filter(array_map(
             static fn(mixed $key): string => str_replace('_', '-', strtolower(trim((string) $key))),
             $keys,
         )));
