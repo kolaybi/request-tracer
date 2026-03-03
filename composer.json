@@ -12,11 +12,18 @@
         "ext-simplexml": "Required for extracting SOAP operation names in trace logs"
     },
     "require-dev": {
-        "laravel/pint": "^1.27"
+        "laravel/pint": "^1.27",
+        "orchestra/testbench": "^10.0",
+        "pestphp/pest": "^4.0"
     },
     "autoload": {
         "psr-4": {
             "KolayBi\\RequestTracer\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "KolayBi\\RequestTracer\\Tests\\": "tests/"
         }
     },
     "extra": {
@@ -27,7 +34,10 @@
         }
     },
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
     },
     "scripts": {
         "pint": "./vendor/bin/pint --dirty --parallel"
