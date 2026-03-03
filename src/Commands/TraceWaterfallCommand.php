@@ -5,11 +5,13 @@ namespace KolayBi\RequestTracer\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
 class TraceWaterfallCommand extends Command
 {
+    use BuildsEndpoint;
     protected $signature = 'request-tracer:waterfall {trace_id}';
 
     protected $description = 'Display a chronological waterfall of all traces for a given trace ID';
@@ -88,36 +90,5 @@ class TraceWaterfallCommand extends Command
             $trace->server_identifier ?? '—',
             $trace->start ?? '—',
         ];
-    }
-
-    private function buildEndpoint(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): string
-    {
-        $protocol = property_exists($trace, 'protocol') || isset($trace->protocol) ? $trace->protocol : null;
-        $host = $trace->host;
-        $path = $trace->path;
-        $query = $trace->query;
-        $route = 'INCOMING' === $type ? $trace->route : null;
-
-        $url = '';
-
-        if ($protocol && $host) {
-            $url = "{$protocol}://{$host}";
-        } elseif ($host) {
-            $url = $host;
-        }
-
-        if ($path) {
-            $url = rtrim($url, '/') . '/' . ltrim($path, '/');
-        }
-
-        if ($query) {
-            $url .= "?{$query}";
-        }
-
-        if ($route) {
-            $url .= " ({$route})";
-        }
-
-        return $url ?: '—';
     }
 }

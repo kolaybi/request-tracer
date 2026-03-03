@@ -3,12 +3,14 @@
 namespace KolayBi\RequestTracer\Commands;
 
 use Illuminate\Console\Command;
+use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class TraceInspectCommand extends Command
 {
+    use BuildsEndpoint;
     protected $signature = 'request-tracer:inspect {id} {--full}';
 
     protected $description = 'Inspect a single trace record by its ULID';
@@ -174,37 +176,6 @@ class TraceInspectCommand extends Command
             $this->components->twoColumnDetail('<fg=yellow>Extra</>');
             $this->renderBody($trace->extra, null);
         }
-    }
-
-    private function buildEndpoint(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): string
-    {
-        $protocol = property_exists($trace, 'protocol') || isset($trace->protocol) ? $trace->protocol : null;
-        $host = $trace->host;
-        $path = $trace->path;
-        $query = $trace->query;
-        $route = 'INCOMING' === $type ? $trace->route : null;
-
-        $url = '';
-
-        if ($protocol && $host) {
-            $url = "{$protocol}://{$host}";
-        } elseif ($host) {
-            $url = $host;
-        }
-
-        if ($path) {
-            $url = rtrim($url, '/') . '/' . ltrim($path, '/');
-        }
-
-        if ($query) {
-            $url .= "?{$query}";
-        }
-
-        if ($route) {
-            $url .= " ({$route})";
-        }
-
-        return $url ?: '—';
     }
 
     private function colorStatus(?int $status): string
