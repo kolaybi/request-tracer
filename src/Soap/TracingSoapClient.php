@@ -157,7 +157,7 @@ class TracingSoapClient extends SoapClient
         RequestSendingEvent::dispatch($this, $request, $location, $action);
 
         try {
-            $response = parent::__doRequest($request, $location, $action, $version, $oneWay);
+            $response = $this->callParentDoRequest($request, $location, $action, $version, $oneWay);
 
             $end = Timestamp::now();
 
@@ -211,6 +211,16 @@ class TracingSoapClient extends SoapClient
         $this->options[$key] = $value;
 
         return $this;
+    }
+
+    protected function callParentDoRequest(
+        string $request,
+        string $location,
+        string $action,
+        int $version,
+        bool $oneWay = false,
+    ): ?string {
+        return parent::__doRequest($request, $location, $action, $version, $oneWay);
     }
 
     protected function initializeIfNeeded(): void

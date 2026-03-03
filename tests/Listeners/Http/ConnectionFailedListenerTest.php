@@ -67,3 +67,19 @@ it('generates trace_id when not in context', function () {
     // Also added to context
     expect(Context::get('trace_id'))->toBeString()->toHaveLength(26);
 });
+
+it('passes extra through from request attributes on failure', function () {
+    $psrRequest = new GuzzleHttp\Psr7\Request('POST', 'https://example.com/api');
+    $request = new Request($psrRequest);
+    $request->setRequestAttributes(['request_tracer' => ['extra' => ['order_id' => 55]]]);
+    $exception = new ConnectionException('timeout');
+
+    $event = new ConnectionFailed($request, $exception);
+
+    $listener = new ConnectionFailedListener();
+    $listener->handle($event);
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return '{"order_id":55}' === $job->attributes['extra'];
+    });
+});

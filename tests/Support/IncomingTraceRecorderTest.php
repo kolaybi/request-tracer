@@ -159,3 +159,57 @@ it('resolves context provider for tenant and user', function () {
             && 'web-01' === $job->attributes['server_identifier'];
     });
 });
+
+it('returns zero response size for zero Content-Length', function () {
+    $request = Request::create('/test', 'GET');
+
+    $response = Mockery::mock(Response::class);
+    $response->shouldReceive('getStatusCode')->andReturn(200);
+    $response->shouldReceive('getContent')->andReturn(false);
+    $response->headers = new ResponseHeaderBag([
+        'Content-Length' => '0',
+    ]);
+
+    $recorder = new IncomingTraceRecorder();
+    $recorder->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return 0 === $job->attributes['response_size'];
+    });
+});
+
+it('returns null response size for non-numeric Content-Length', function () {
+    $request = Request::create('/test', 'GET');
+
+    $response = Mockery::mock(Response::class);
+    $response->shouldReceive('getStatusCode')->andReturn(200);
+    $response->shouldReceive('getContent')->andReturn(false);
+    $response->headers = new ResponseHeaderBag([
+        'Content-Length' => 'not-a-number',
+    ]);
+
+    $recorder = new IncomingTraceRecorder();
+    $recorder->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return null === $job->attributes['response_size'];
+    });
+});
+
+it('clamps negative Content-Length to zero', function () {
+    $request = Request::create('/test', 'GET');
+
+    $response = Mockery::mock(Response::class);
+    $response->shouldReceive('getStatusCode')->andReturn(200);
+    $response->shouldReceive('getContent')->andReturn(false);
+    $response->headers = new ResponseHeaderBag([
+        'Content-Length' => '-5',
+    ]);
+
+    $recorder = new IncomingTraceRecorder();
+    $recorder->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return 0 === $job->attributes['response_size'];
+    });
+});

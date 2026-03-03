@@ -83,3 +83,28 @@ it('overrides config retention with --days option', function () {
         ->expectsOutputToContain('Purged 1 outgoing traces')
         ->assertExitCode(0);
 });
+
+it('purges nothing when all traces are recent', function () {
+    createOutgoingTrace(['host' => 'fresh.example.com', 'created_at' => now()->subDays(5)]);
+    createOutgoingTrace(['host' => 'also-fresh.example.com', 'created_at' => now()->subDays(1)]);
+
+    $this->artisan('request-tracer:purge', ['--days' => 30])
+        ->expectsOutputToContain('Purged 0 outgoing traces')
+        ->expectsOutputToContain('Purged 0 incoming traces')
+        ->assertExitCode(0);
+
+    expect(OutgoingRequestTrace::count())->toBe(2);
+});
+
+it('deletes in chunks when records exceed chunk size', function () {
+    // Create 5 old traces, purge with chunk=2
+    for ($i = 0; $i < 5; $i++) {
+        createOutgoingTrace(['host' => "old-{$i}.example.com", 'created_at' => now()->subDays(60)]);
+    }
+
+    $this->artisan('request-tracer:purge', ['--days' => 30, '--chunk' => 2])
+        ->expectsOutputToContain('Purged 5 outgoing traces')
+        ->assertExitCode(0);
+
+    expect(OutgoingRequestTrace::count())->toBe(0);
+});

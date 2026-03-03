@@ -106,3 +106,40 @@ it('respects sample rate of 0 and drops trace', function () {
 
     Queue::assertNotPushed(StoreTraceJob::class);
 });
+
+it('captures response body, size, and headers correctly', function () {
+    $psrRequest = new GuzzleHttp\Psr7\Request('GET', 'https://api.example.com/data');
+    $request = new Request($psrRequest);
+    $responseBody = '{"items":[1,2,3]}';
+    $psrResponse = new Psr7Response(200, ['X-Request-Id' => 'abc', 'Content-Type' => 'application/json'], $responseBody);
+    $response = new Response($psrResponse);
+
+    $event = new ResponseReceived($request, $response);
+
+    $listener = new ResponseReceivedListener();
+    $listener->handle($event);
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) use ($responseBody) {
+        return $responseBody === $job->attributes['response_body']
+            && strlen($responseBody) === $job->attributes['response_size']
+            && null !== $job->attributes['response_headers'];
+    });
+});
+
+it('records handler stats as JSON', function () {
+    $psrRequest = new GuzzleHttp\Psr7\Request('GET', 'https://api.example.com/stats');
+    $request = new Request($psrRequest);
+    $psrResponse = new Psr7Response(200, [], 'ok');
+    $response = new Response($psrResponse);
+
+    $event = new ResponseReceived($request, $response);
+
+    $listener = new ResponseReceivedListener();
+    $listener->handle($event);
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        // stats should be a valid JSON string (even if empty object/array)
+        return null !== $job->attributes['stats']
+            && null !== json_decode($job->attributes['stats']);
+    });
+});

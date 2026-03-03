@@ -42,3 +42,57 @@ it('records soap connection failure trace', function () {
             && 'e-invoice' === $job->attributes['channel'];
     });
 });
+
+it('records soap failure with channel and extra', function () {
+    $soapClient = Mockery::mock(SoapClient::class);
+    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('');
+
+    $exception = new RuntimeException('Service unavailable', 503);
+
+    $event = new ConnectionFailedEvent(
+        soapClient: $soapClient,
+        request: '<soap:Envelope><soap:Body><ProcessInvoice/></soap:Body></soap:Envelope>',
+        location: 'https://soap.example.com/service',
+        action: 'http://tempuri.org/ProcessInvoice',
+        exception: $exception,
+        channel: 'billing',
+        extra: ['invoice_id' => 42],
+        start: '2026-01-01 00:00:00.000000',
+        end: '2026-01-01 00:00:03.000000',
+    );
+
+    $listener = new ConnectionFailedListener();
+    $listener->handle($event);
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return 'billing' === $job->attributes['channel']
+            && '{"invoice_id":42}' === $job->attributes['extra']
+            && 503 === $job->attributes['status'];
+    });
+});
+
+it('records soap failure with string extra passed as-is', function () {
+    $soapClient = Mockery::mock(SoapClient::class);
+    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('');
+
+    $exception = new RuntimeException('fail', 500);
+
+    $event = new ConnectionFailedEvent(
+        soapClient: $soapClient,
+        request: '<soap:Envelope><soap:Body><Action/></soap:Body></soap:Envelope>',
+        location: 'https://soap.example.com/service',
+        action: 'http://tempuri.org/Action',
+        exception: $exception,
+        channel: null,
+        extra: 'raw-string-data',
+        start: '2026-01-01 00:00:00.000000',
+        end: '2026-01-01 00:00:01.000000',
+    );
+
+    $listener = new ConnectionFailedListener();
+    $listener->handle($event);
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return 'raw-string-data' === $job->attributes['extra'];
+    });
+});

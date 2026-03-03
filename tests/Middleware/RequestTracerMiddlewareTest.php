@@ -62,3 +62,22 @@ it('does not record when response is not a symfony response', function () {
     expect($result)->toBe('plain string');
     Queue::assertNotPushed(StoreTraceJob::class);
 });
+
+it('generates unique trace_id for consecutive requests', function () {
+    $middleware = new RequestTracerMiddleware();
+
+    $request1 = Request::create('/first', 'GET');
+    $middleware->handle($request1, fn() => new Response('ok'));
+    $traceId1 = Context::get('trace_id');
+
+    // Reset context for second request
+    Context::forget('trace_id');
+
+    $request2 = Request::create('/second', 'GET');
+    $middleware->handle($request2, fn() => new Response('ok'));
+    $traceId2 = Context::get('trace_id');
+
+    expect($traceId1)->toBeString()->toHaveLength(26)
+        ->and($traceId2)->toBeString()->toHaveLength(26)
+        ->and($traceId1)->not->toBe($traceId2);
+});
