@@ -3,6 +3,14 @@
     "description": "Standalone request tracing package for Laravel — captures outgoing HTTP/SOAP requests and optionally incoming requests.",
     "type": "library",
     "license": "MIT",
+    "keywords": [
+        "laravel",
+        "request-tracing",
+        "http",
+        "soap",
+        "logging",
+        "observability"
+    ],
     "require": {
         "php": "^8.4",
         "laravel/framework": "^12.0"
