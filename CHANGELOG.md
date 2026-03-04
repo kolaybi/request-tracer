@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.1.1](https://github.com/kolaybi/request-tracer/compare/v1.1.0...v1.1.1)  (2026-03-04)
+
+### Added
+- Add `.gitattributes` to enforce consistent Git attributes across platforms
+
 ## [v1.1.0](https://github.com/kolaybi/request-tracer/compare/v1.0.2...v1.1.0)  (2026-03-03)
 
 ### Added
