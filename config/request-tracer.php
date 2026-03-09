@@ -45,6 +45,7 @@ return [
         'enabled'               => env('REQUEST_TRACER_INCOMING_ENABLED', false),
         'table'                 => 'incoming_request_traces',
         'model'                 => IncomingRequestTrace::class,
+        'sample_rate'           => (float) env('REQUEST_TRACER_INCOMING_SAMPLE_RATE', 1.0),
         'capture_response_body' => (bool) env('REQUEST_TRACER_INCOMING_CAPTURE_RESPONSE', false),
     ],
 ];

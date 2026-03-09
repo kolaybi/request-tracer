@@ -196,6 +196,30 @@ it('returns null response size for non-numeric Content-Length', function () {
     });
 });
 
+it('drops trace at sample rate 0', function () {
+    config(['kolaybi.request-tracer.incoming.sample_rate' => 0.0]);
+
+    $request = Request::create('/test', 'GET');
+    $response = new Response('ok', 200);
+
+    $recorder = new IncomingTraceRecorder();
+    $recorder->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
+
+    Queue::assertNotPushed(StoreTraceJob::class);
+});
+
+it('records trace at sample rate 1', function () {
+    config(['kolaybi.request-tracer.incoming.sample_rate' => 1.0]);
+
+    $request = Request::create('/test', 'GET');
+    $response = new Response('ok', 200);
+
+    $recorder = new IncomingTraceRecorder();
+    $recorder->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
+
+    Queue::assertPushed(StoreTraceJob::class);
+});
+
 it('clamps negative Content-Length to zero', function () {
     $request = Request::create('/test', 'GET');
 

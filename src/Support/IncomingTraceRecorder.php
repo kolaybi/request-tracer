@@ -14,6 +14,10 @@ class IncomingTraceRecorder
 {
     public function record(Request $request, Response $response, string $start, string $end): void
     {
+        if (!$this->shouldSample()) {
+            return;
+        }
+
         $contextProvider = app(TraceContextProvider::class);
         $tenantColumn = config('kolaybi.request-tracer.tenant_column', 'tenant_id');
 
@@ -57,6 +61,13 @@ class IncomingTraceRecorder
         }
 
         return TraceHelper::normalizeBody($content);
+    }
+
+    private function shouldSample(): bool
+    {
+        $rate = config('kolaybi.request-tracer.incoming.sample_rate', 1.0);
+
+        return $rate >= 1.0 || (mt_rand() / mt_getrandmax()) < $rate;
     }
 
     private function resolveResponseSize(Response $response): ?int
