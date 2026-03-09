@@ -38,7 +38,7 @@ return [
         'enabled'     => env('REQUEST_TRACER_OUTGOING_ENABLED', true),
         'table'       => 'outgoing_request_traces',
         'model'       => OutgoingRequestTrace::class,
-        'sample_rate' => (float) env('REQUEST_TRACER_SAMPLE_RATE', 1.0),
+        'sample_rate' => (float) env('REQUEST_TRACER_OUTGOING_SAMPLE_RATE', 1.0),
         'only'        => env('REQUEST_TRACER_OUTGOING_ONLY', ''), // Comma-separated host/path patterns (supports wildcards: 'api.example.com*')
         'except'      => env('REQUEST_TRACER_OUTGOING_EXCEPT', ''), // Comma-separated host/path patterns (supports wildcards: '*.internal.com*')
     ],
