@@ -37,8 +37,9 @@ return [
     'tenant_cast'      => 'integer', // 'integer', 'string', or any Eloquent cast type
     'user_cast'        => 'integer', // 'integer', 'string', or any Eloquent cast type
 
-    'max_body_size'    => (int) env('REQUEST_TRACER_MAX_BODY_SIZE', 0),
-    'retention_days'   => (int) env('REQUEST_TRACER_RETENTION_DAYS', 0),
+    'max_body_size'              => (int) env('REQUEST_TRACER_MAX_BODY_SIZE', 0),
+    'retention_days'             => (int) env('REQUEST_TRACER_RETENTION_DAYS', 0),
+    'exclude_body_content_types' => env('REQUEST_TRACER_EXCLUDE_BODY_CONTENT_TYPES', ''),
 
     'mask_sensitive'   => (bool) env('REQUEST_TRACER_MASK_SENSITIVE', false),
     'mask_value'       => env('REQUEST_TRACER_MASK_VALUE', '[REDACTED]'),
@@ -225,6 +226,47 @@ php artisan request-tracer:inspect 01JEXAMPLE123 --full
 ```
 
 The command searches both incoming and outgoing tables automatically — no need to specify which.
+
+### Search
+
+Query traces with flexible filters:
+
+```bash
+# By host (wildcards supported)
+php artisan request-tracer:search --host="api.*"
+
+# By status range
+php artisan request-tracer:search --status=5xx
+
+# By duration threshold
+php artisan request-tracer:search --min-duration=1000
+
+# Combine filters
+php artisan request-tracer:search --host="api.*" --status=5xx --method=POST --from="2026-03-01" --to="2026-03-09" --type=outgoing --limit=20
+```
+
+Available filters: `--host`, `--path`, `--status`, `--method`, `--channel`, `--from`, `--to`, `--min-duration`, `--max-duration`, `--type`, `--limit`.
+
+### Stats
+
+View aggregate statistics over a time window:
+
+```bash
+php artisan request-tracer:stats
+php artisan request-tracer:stats --hours=6 --type=outgoing
+```
+
+Displays total requests, 2xx/4xx/5xx counts, error rate, duration min/avg/max, top hosts, and top channels (outgoing).
+
+## Content-Type Body Exclusion
+
+Skip storing request/response bodies for binary or large content types:
+
+```env
+REQUEST_TRACER_EXCLUDE_BODY_CONTENT_TYPES=image/,video/,application/pdf,application/octet-stream
+```
+
+Prefix matching is used — `image/` matches `image/png`, `image/jpeg`, etc. The trace is still recorded, only the body fields are set to `null`/empty.
 
 ## Data Retention
 

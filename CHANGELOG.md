@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.3.0](https://github.com/kolaybi/request-tracer/compare/v1.2.0...v1.3.0) (2026-03-09)
+
+### Added
+- `request-tracer:rotate` command — atomic daily table rotation with automatic archive cleanup past `retention_days`
+- `request-tracer:stats` command — aggregate statistics (total, 2xx/4xx/5xx, error rate, duration min/avg/max, top hosts, top channels) with `--hours` and `--type` filtering
+- `request-tracer:search` command — filter traces by host, path, status (exact or range like `5xx`), method, channel, date range, duration, and type with `--limit`
+- Content-type body exclusion — `exclude_body_content_types` config to skip storing request/response bodies for binary content types (e.g. `image/,video/,application/pdf`)
+
 ## [v1.2.0](https://github.com/kolaybi/request-tracer/compare/v1.1.1...v1.2.0) (2026-03-09)
 
 ### Added
