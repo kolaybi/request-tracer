@@ -22,8 +22,12 @@
         <soap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http"/>
         <operation name="Ping">
             <soap:operation soapAction="http://localhost:9999/soap/Ping"/>
-            <input><soap:body use="literal"/></input>
-            <output><soap:body use="literal"/></output>
+            <input>
+                <soap:body use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+            </output>
         </operation>
     </binding>
 

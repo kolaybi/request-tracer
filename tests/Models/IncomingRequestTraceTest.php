@@ -28,8 +28,8 @@ it('returns null connection by default', function () {
 
 it('uses configured table name', function () {
     config([
-        'kolaybi.request-tracer.incoming.table'  => 'custom_incoming',
-        'kolaybi.request-tracer.schema'          => null,
+        'kolaybi.request-tracer.incoming.table' => 'custom_incoming',
+        'kolaybi.request-tracer.schema'         => null,
     ]);
 
     expect(new IncomingRequestTrace()->getTable())->toBe('custom_incoming');
@@ -37,8 +37,8 @@ it('uses configured table name', function () {
 
 it('prepends schema to table name', function () {
     config([
-        'kolaybi.request-tracer.incoming.table'  => 'incoming_request_traces',
-        'kolaybi.request-tracer.schema'          => 'tracing',
+        'kolaybi.request-tracer.incoming.table' => 'incoming_request_traces',
+        'kolaybi.request-tracer.schema'         => 'tracing',
     ]);
 
     expect(new IncomingRequestTrace()->getTable())->toBe('tracing.incoming_request_traces');

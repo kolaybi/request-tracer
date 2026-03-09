@@ -9,12 +9,12 @@ use KolayBi\RequestTracer\Contracts\TraceContextProvider;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use Symfony\Component\HttpFoundation\Response;
 
-use function strlen;
-
 class IncomingTraceRecorder
 {
     public function record(Request $request, Response $response, string $start, string $end): void
     {
+        $this->updateCircuitBreaker($request->path(), $response->getStatusCode());
+
         if (!$this->shouldSample() || !$this->shouldTraceRoute($request)) {
             return;
         }
@@ -100,6 +100,21 @@ class IncomingTraceRecorder
         $rate = config('kolaybi.request-tracer.incoming.sample_rate', 1.0);
 
         return $rate >= 1.0 || (mt_rand() / mt_getrandmax()) < $rate;
+    }
+
+    private function updateCircuitBreaker(string $path, int $status): void
+    {
+        $circuitBreaker = app(CircuitBreaker::class);
+
+        if (!$circuitBreaker->isEnabled()) {
+            return;
+        }
+
+        $endpoint = '/' . ltrim($path, '/');
+
+        $status >= 500
+            ? $circuitBreaker->recordFailure($endpoint, null, 'incoming')
+            : $circuitBreaker->recordSuccess($endpoint, null, 'incoming');
     }
 
     private function resolveResponseSize(Response $response): ?int

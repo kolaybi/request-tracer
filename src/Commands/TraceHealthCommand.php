@@ -28,8 +28,9 @@ class TraceHealthCommand extends Command
         }
 
         $this->table(
-            ['Host', 'Channel', 'Failures', 'Status', 'Tripped At'],
+            ['Type', 'Host', 'Channel', 'Failures', 'Status', 'Tripped At'],
             array_map(fn(array $ep) => [
+                strtoupper($ep['direction'] ?? 'outgoing'),
                 $ep['host'],
                 $ep['channel'] ?? '—',
                 $ep['failures'],

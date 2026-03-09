@@ -137,12 +137,18 @@ it('shows no differences marker for identical headers', function () {
     $headers = json_encode(['Content-Type' => ['application/json']]);
 
     $t1 = OutgoingRequestTrace::create([
-        'host'            => 'a.com', 'method' => 'GET', 'status' => 200,
-        'request_headers' => $headers, 'response_headers' => $headers,
+        'host'             => 'a.com',
+        'method'           => 'GET',
+        'status'           => 200,
+        'request_headers'  => $headers,
+        'response_headers' => $headers,
     ]);
     $t2 = OutgoingRequestTrace::create([
-        'host'            => 'a.com', 'method' => 'GET', 'status' => 200,
-        'request_headers' => $headers, 'response_headers' => $headers,
+        'host'             => 'a.com',
+        'method'           => 'GET',
+        'status'           => 200,
+        'request_headers'  => $headers,
+        'response_headers' => $headers,
     ]);
 
     Artisan::call('request-tracer:diff', ['id1' => $t1->id, 'id2' => $t2->id, '-v' => true]);

@@ -120,6 +120,51 @@ it('tracks endpoints with different channels separately', function () {
         ->and($notifications['healthy'])->toBeTrue();
 });
 
+it('separates incoming and outgoing endpoints', function () {
+    $cb = app(CircuitBreaker::class);
+
+    $cb->recordFailure('api.example.com', null, 'outgoing');
+    $cb->recordFailure('api.example.com', null, 'outgoing');
+    $cb->recordFailure('api.example.com', null, 'outgoing');
+    $cb->recordFailure('/api/orders', null, 'incoming');
+
+    $outgoing = $cb->getStatus('api.example.com', null, 'outgoing');
+    $incoming = $cb->getStatus('/api/orders', null, 'incoming');
+
+    expect($outgoing['failures'])->toBe(3)
+        ->and($outgoing['tripped'])->toBeTrue()
+        ->and($outgoing['direction'])->toBe('outgoing')
+        ->and($incoming['failures'])->toBe(1)
+        ->and($incoming['tripped'])->toBeFalse()
+        ->and($incoming['direction'])->toBe('incoming');
+});
+
+it('includes direction in allEndpoints', function () {
+    $cb = app(CircuitBreaker::class);
+
+    $cb->recordSuccess('api.example.com', null, 'outgoing');
+    $cb->recordSuccess('/api/orders', null, 'incoming');
+
+    $endpoints = $cb->allEndpoints();
+    $directions = collect($endpoints)->pluck('direction')->all();
+
+    expect($endpoints)->toHaveCount(2)
+        ->and($directions)->toContain('outgoing')
+        ->and($directions)->toContain('incoming');
+});
+
+it('dispatches event with direction', function () {
+    $cb = app(CircuitBreaker::class);
+
+    $cb->recordFailure('/api/orders', null, 'incoming');
+    $cb->recordFailure('/api/orders', null, 'incoming');
+    $cb->recordFailure('/api/orders', null, 'incoming');
+
+    Event::assertDispatched(CircuitBreakerTripped::class, function (CircuitBreakerTripped $e) {
+        return '/api/orders' === $e->host && 'incoming' === $e->direction;
+    });
+});
+
 it('returns disabled when config is false', function () {
     config(['kolaybi.request-tracer.circuit_breaker.enabled' => false]);
 

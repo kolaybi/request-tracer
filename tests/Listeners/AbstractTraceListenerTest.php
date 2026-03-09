@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Queue;
 use KolayBi\RequestTracer\Jobs\StoreTraceJob;
 use KolayBi\RequestTracer\Listeners\AbstractTraceListener;
+use KolayBi\RequestTracer\Support\CircuitBreaker;
 use KolayBi\RequestTracer\Support\RequestTimingStore;
 
 beforeEach(function () {
@@ -108,6 +109,30 @@ it('persistTrace drops trace at sample rate 0.0', function () {
     $this->listener->callPersistTrace(['host' => 'example.com', 'start' => null, 'end' => null]);
 
     Queue::assertNotPushed(StoreTraceJob::class);
+});
+
+it('persistTrace updates circuit breaker even when sampling drops the trace', function () {
+    config([
+        'kolaybi.request-tracer.outgoing.sample_rate'    => 0.0,
+        'kolaybi.request-tracer.circuit_breaker.enabled' => true,
+        'cache.default'                                  => 'array',
+    ]);
+
+    $this->listener->callPersistTrace([
+        'host'      => 'api.example.com',
+        'path'      => '/v1/users',
+        'status'    => 500,
+        'exception' => null,
+        'start'     => null,
+        'end'       => null,
+    ]);
+
+    Queue::assertNotPushed(StoreTraceJob::class);
+
+    $cb = app(CircuitBreaker::class);
+    $status = $cb->getStatus('api.example.com', null);
+
+    expect($status['failures'])->toBe(1);
 });
 
 // ──────────────────────────────────────────────────

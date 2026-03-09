@@ -12,5 +12,6 @@ class CircuitBreakerTripped
         public readonly string $host,
         public readonly ?string $channel,
         public readonly int $failures,
+        public readonly string $direction = 'outgoing',
     ) {}
 }

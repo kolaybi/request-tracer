@@ -55,6 +55,8 @@ abstract class AbstractTraceListener
 
     protected function persistTrace(array $attributes): void
     {
+        $this->updateCircuitBreaker($attributes);
+
         if (!$this->shouldSample() || !$this->shouldTraceUrl($attributes)) {
             return;
         }
@@ -62,8 +64,6 @@ abstract class AbstractTraceListener
         $modelClass = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
 
         TraceHelper::dispatchTrace($attributes, $modelClass);
-
-        $this->updateCircuitBreaker($attributes);
     }
 
     protected function formatException(Throwable $e): string

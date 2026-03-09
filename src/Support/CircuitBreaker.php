@@ -19,39 +19,40 @@ class CircuitBreaker
         return (bool) config('kolaybi.request-tracer.circuit_breaker.enabled', false);
     }
 
-    public function recordFailure(string $host, ?string $channel): void
+    public function recordFailure(string $host, ?string $channel, string $direction = 'outgoing'): void
     {
-        $key = $this->failureKey($host, $channel);
+        $key = $this->failureKey($host, $channel, $direction);
         $ttl = $this->failureTtl();
 
         // Initialize if absent, then increment
         $this->cache->add($key, 0, $ttl);
         $count = $this->cache->increment($key);
 
-        $this->registerEndpoint($host, $channel);
+        $this->registerEndpoint($host, $channel, $direction);
 
         $threshold = $this->failureThreshold();
-        $trippedKey = $this->trippedKey($host, $channel);
+        $trippedKey = $this->trippedKey($host, $channel, $direction);
 
         // Only dispatch event when we FIRST reach the threshold
         if ($count === $threshold && !$this->cache->has($trippedKey)) {
             $this->cache->put($trippedKey, now()->toIso8601String(), $this->recoveryAfter());
-            CircuitBreakerTripped::dispatch($host, $channel, $count);
+            CircuitBreakerTripped::dispatch($host, $channel, $count, $direction);
         }
     }
 
-    public function recordSuccess(string $host, ?string $channel): void
+    public function recordSuccess(string $host, ?string $channel, string $direction = 'outgoing'): void
     {
-        $this->cache->put($this->failureKey($host, $channel), 0, $this->failureTtl());
-        $this->registerEndpoint($host, $channel);
+        $this->cache->put($this->failureKey($host, $channel, $direction), 0, $this->failureTtl());
+        $this->registerEndpoint($host, $channel, $direction);
     }
 
-    public function getStatus(string $host, ?string $channel): array
+    public function getStatus(string $host, ?string $channel, string $direction = 'outgoing'): array
     {
-        $failures = (int) $this->cache->get($this->failureKey($host, $channel), 0);
-        $trippedAt = $this->cache->get($this->trippedKey($host, $channel));
+        $failures = (int) $this->cache->get($this->failureKey($host, $channel, $direction), 0);
+        $trippedAt = $this->cache->get($this->trippedKey($host, $channel, $direction));
 
         return [
+            'direction'  => $direction,
             'host'       => $host,
             'channel'    => $channel,
             'failures'   => $failures,
@@ -68,7 +69,7 @@ class CircuitBreaker
         $statuses = [];
 
         foreach ($registry as $entry) {
-            $statuses[] = $this->getStatus($entry['host'], $entry['channel']);
+            $statuses[] = $this->getStatus($entry['host'], $entry['channel'], $entry['direction'] ?? 'outgoing');
         }
 
         // Sort: tripped first, then by failures desc
@@ -83,14 +84,14 @@ class CircuitBreaker
         return $statuses;
     }
 
-    private function failureKey(string $host, ?string $channel): string
+    private function failureKey(string $host, ?string $channel, string $direction): string
     {
-        return 'request-tracer:cb:' . $this->sanitize($host) . ':' . $this->sanitize($channel ?? '_');
+        return 'request-tracer:cb:' . $direction . ':' . $this->sanitize($host) . ':' . $this->sanitize($channel ?? '_');
     }
 
-    private function trippedKey(string $host, ?string $channel): string
+    private function trippedKey(string $host, ?string $channel, string $direction): string
     {
-        return 'request-tracer:cb-tripped:' . $this->sanitize($host) . ':' . $this->sanitize($channel ?? '_');
+        return 'request-tracer:cb-tripped:' . $direction . ':' . $this->sanitize($host) . ':' . $this->sanitize($channel ?? '_');
     }
 
     private function registryKey(): string
@@ -103,13 +104,13 @@ class CircuitBreaker
         return strtolower(preg_replace('/[^a-z0-9\-\.]/i', '-', $value));
     }
 
-    private function registerEndpoint(string $host, ?string $channel): void
+    private function registerEndpoint(string $host, ?string $channel, string $direction): void
     {
         $registry = $this->cache->get($this->registryKey(), []);
-        $key = $this->sanitize($host) . ':' . $this->sanitize($channel ?? '_');
+        $key = $direction . ':' . $this->sanitize($host) . ':' . $this->sanitize($channel ?? '_');
 
         if (!isset($registry[$key])) {
-            $registry[$key] = ['host' => $host, 'channel' => $channel];
+            $registry[$key] = ['host' => $host, 'channel' => $channel, 'direction' => $direction];
             $this->cache->forever($this->registryKey(), $registry);
         }
     }

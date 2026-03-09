@@ -51,3 +51,17 @@ it('shows HEALTHY for endpoint with zero failures', function () {
     expect($output)->toContain('api.example.com')
         ->toContain('HEALTHY');
 });
+
+it('shows Type column with OUTGOING and INCOMING', function () {
+    $cb = app(CircuitBreaker::class);
+    $cb->recordSuccess('api.example.com', null, 'outgoing');
+    $cb->recordSuccess('/api/orders', null, 'incoming');
+
+    Artisan::call('request-tracer:health');
+    $output = Artisan::output();
+
+    expect($output)->toContain('OUTGOING')
+        ->toContain('INCOMING')
+        ->toContain('api.example.com')
+        ->toContain('/api/orders');
+});
