@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use KolayBi\RequestTracer\Commands\PurgeTracesCommand;
 use KolayBi\RequestTracer\Commands\RotateTracesCommand;
+use KolayBi\RequestTracer\Commands\TraceDiffCommand;
 use KolayBi\RequestTracer\Commands\TraceInspectCommand;
 use KolayBi\RequestTracer\Commands\TraceSearchCommand;
 use KolayBi\RequestTracer\Commands\TraceStatsCommand;
@@ -69,6 +70,7 @@ class RequestTracerServiceProvider extends ServiceProvider
             $this->commands([
                 PurgeTracesCommand::class,
                 RotateTracesCommand::class,
+                TraceDiffCommand::class,
                 TraceInspectCommand::class,
                 TraceSearchCommand::class,
                 TraceStatsCommand::class,
