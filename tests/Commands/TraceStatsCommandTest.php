@@ -180,6 +180,18 @@ it('enforces minimum 1 hour window', function () {
         ->assertExitCode(0);
 });
 
+it('shows dash for null duration stats', function () {
+    // Create a trace with null duration — forces formatMs to handle null
+    createOutgoing(['duration' => null]);
+
+    Artisan::call('request-tracer:stats', ['--type' => 'outgoing']);
+    $output = Artisan::output();
+
+    expect($output)
+        ->toContain('Total Requests')
+        ->toContain('—'); // null duration renders as em-dash
+});
+
 it('does not show channels section for incoming traces', function () {
     createIncoming();
 

@@ -133,6 +133,33 @@ it('shows identical marker for matching bodies', function () {
     expect($output)->toContain('(identical)');
 });
 
+it('parses raw string headers (non-JSON) and diffs them', function () {
+    $t1 = OutgoingRequestTrace::create([
+        'host'             => 'a.com',
+        'method'           => 'GET',
+        'status'           => 200,
+        'request_headers'  => "Content-Type: application/json\r\nAuthorization: Bearer abc",
+        'response_headers' => 'X-Request-Id: 123',
+    ]);
+    $t2 = OutgoingRequestTrace::create([
+        'host'             => 'a.com',
+        'method'           => 'GET',
+        'status'           => 200,
+        'request_headers'  => "Content-Type: text/html\r\nX-Custom: value",
+        'response_headers' => 'X-Request-Id: 456',
+    ]);
+
+    Artisan::call('request-tracer:diff', ['id1' => $t1->id, 'id2' => $t2->id, '-v' => true]);
+    $output = Artisan::output();
+
+    // "authorization" was removed (only in t1), "x-custom" was added (only in t2), "content-type" changed
+    expect($output)
+        ->toContain('Request Headers')
+        ->toContain('- authorization')     // removed header
+        ->toContain('+ x-custom')          // added header
+        ->toContain('~ content-type');      // changed header
+});
+
 it('shows no differences marker for identical headers', function () {
     $headers = json_encode(['Content-Type' => ['application/json']]);
 

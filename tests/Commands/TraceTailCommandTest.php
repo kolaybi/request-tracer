@@ -1,11 +1,15 @@
 <?php
 
+use Illuminate\Console\OutputStyle;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use KolayBi\RequestTracer\Commands\TraceTailCommand;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
+use Symfony\Component\Console\Input\ArrayInput;
+use Symfony\Component\Console\Output\BufferedOutput;
 
 uses(LazilyRefreshDatabase::class);
 
@@ -132,6 +136,123 @@ it('uses custom interval from option', function () {
     $this->artisan('request-tracer:tail', ['--max-polls' => 1, '--interval' => 5])
         ->expectsOutputToContain('every 5s')
         ->assertExitCode(0);
+});
+
+it('renders new outgoing traces that arrive after startup', function () {
+    $outgoing = config('kolaybi.request-tracer.outgoing.table');
+    $connection = DB::connection('testing');
+    $inserted = false;
+
+    DB::listen(function ($query) use ($connection, $outgoing, &$inserted) {
+        if (!$inserted && str_starts_with($query->sql, 'select "id" from') && str_contains($query->sql, $outgoing)) {
+            $inserted = true;
+            $connection->table($outgoing)->insert([
+                'id'         => (string) Str::ulid(),
+                'host'       => 'new-outgoing.example.com',
+                'path'       => '/api/test',
+                'method'     => 'POST',
+                'status'     => 201,
+                'duration'   => 42,
+                'created_at' => now(),
+            ]);
+        }
+    });
+
+    $this->artisan('request-tracer:tail', ['--max-polls' => 1, '--type' => 'outgoing', '--interval' => 1])
+        ->expectsOutputToContain('new-outgoing.example.com')
+        ->assertExitCode(0);
+});
+
+it('renders new incoming traces that arrive after startup', function () {
+    $incoming = config('kolaybi.request-tracer.incoming.table');
+    $connection = DB::connection('testing');
+    $inserted = false;
+
+    DB::listen(function ($query) use ($connection, $incoming, &$inserted) {
+        if (!$inserted && str_starts_with($query->sql, 'select "id" from') && str_contains($query->sql, $incoming)) {
+            $inserted = true;
+            $connection->table($incoming)->insert([
+                'id'         => (string) Str::ulid(),
+                'host'       => 'new-incoming.test',
+                'path'       => '/dashboard',
+                'method'     => 'GET',
+                'status'     => 200,
+                'duration'   => 33,
+                'created_at' => now(),
+            ]);
+        }
+    });
+
+    $this->artisan('request-tracer:tail', ['--max-polls' => 1, '--type' => 'incoming', '--interval' => 1])
+        ->expectsOutputToContain('new-incoming.test')
+        ->assertExitCode(0);
+});
+
+it('renders colorStatus and renderLine correctly for all status branches', function () {
+    // Use reflection to test the private renderLine/colorStatus methods directly
+    $command = new TraceTailCommand();
+    $buffered = new BufferedOutput();
+    $input = new ArrayInput([]);
+    $command->setOutput(new OutputStyle($input, $buffered));
+
+    $renderLine = new ReflectionMethod($command, 'renderLine');
+
+    // 2xx status (green)
+    $trace = new OutgoingRequestTrace(
+        ['host' => 'a.com', 'path' => '/ok', 'method' => 'GET', 'status' => 200, 'duration' => 42, 'channel' => null, 'created_at' => now()],
+    );
+    $renderLine->invoke($command, $trace, 'OUTGOING');
+
+    // 4xx status (yellow)
+    $trace = new OutgoingRequestTrace(
+        ['host' => 'b.com', 'path' => '/missing', 'method' => 'GET', 'status' => 404, 'duration' => 10, 'channel' => null, 'created_at' => now()],
+    );
+    $renderLine->invoke($command, $trace, 'OUTGOING');
+
+    // 5xx status (red)
+    $trace = new OutgoingRequestTrace(
+        ['host' => 'c.com', 'path' => '/error', 'method' => 'GET', 'status' => 500, 'duration' => 5000, 'channel' => null, 'created_at' => now()],
+    );
+    $renderLine->invoke($command, $trace, 'OUTGOING');
+
+    // null status (white dash)
+    $trace = new OutgoingRequestTrace(
+        ['host' => 'd.com', 'path' => '/null', 'method' => 'GET', 'status' => null, 'duration' => null, 'channel' => null, 'created_at' => now()],
+    );
+    $renderLine->invoke($command, $trace, 'OUTGOING');
+
+    // 1xx status (white)
+    $trace = new OutgoingRequestTrace(
+        ['host' => 'e.com', 'path' => '/info', 'method' => 'GET', 'status' => 100, 'duration' => 1, 'channel' => null, 'created_at' => now()],
+    );
+    $renderLine->invoke($command, $trace, 'OUTGOING');
+
+    // With channel
+    $trace = new OutgoingRequestTrace(
+        ['host' => 'f.com', 'path' => '/pay', 'method' => 'POST', 'status' => 200, 'duration' => 100, 'channel' => 'payments', 'created_at' => now()],
+    );
+    $renderLine->invoke($command, $trace, 'OUTGOING');
+
+    // Incoming trace (no channel shown even if set)
+    $inTrace = new IncomingRequestTrace(
+        ['host' => 'g.test', 'path' => '/dashboard', 'method' => 'GET', 'status' => 200, 'duration' => 50, 'created_at' => now()],
+    );
+    $renderLine->invoke($command, $inTrace, 'INCOMING');
+
+    $output = $buffered->fetch();
+
+    expect($output)
+        ->toContain('a.com')
+        ->toContain('42ms')
+        ->toContain('b.com')
+        ->toContain('c.com')
+        ->toContain('d.com')
+        ->toContain('e.com')
+        ->toContain('f.com')
+        ->toContain('payments')
+        ->toContain('g.test')
+        ->toContain('OUTGOING')
+        ->toContain('INCOMING');
 });
 
 it('handles high-volume pre-existing traces without rendering them', function () {

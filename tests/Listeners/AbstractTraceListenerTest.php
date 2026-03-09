@@ -374,6 +374,29 @@ it('traces URL not matching except patterns', function () {
     Queue::assertPushed(StoreTraceJob::class);
 });
 
+it('handles array patterns for only config', function () {
+    config([
+        'kolaybi.request-tracer.outgoing.only'        => ['api.example.com*'],
+        'kolaybi.request-tracer.outgoing.sample_rate' => 1.0,
+    ]);
+
+    $this->listener->callPersistTrace(['host' => 'api.example.com', 'path' => '/v1/orders']);
+
+    Queue::assertPushed(StoreTraceJob::class);
+});
+
+it('handles array patterns for except config', function () {
+    config([
+        'kolaybi.request-tracer.outgoing.only'        => [],
+        'kolaybi.request-tracer.outgoing.except'      => ['*.internal.com*'],
+        'kolaybi.request-tracer.outgoing.sample_rate' => 1.0,
+    ]);
+
+    $this->listener->callPersistTrace(['host' => 'svc.internal.com', 'path' => '/api/data']);
+
+    Queue::assertNotPushed(StoreTraceJob::class);
+});
+
 it('only takes precedence over except for outgoing', function () {
     config([
         'kolaybi.request-tracer.outgoing.only'        => 'api.example.com*',

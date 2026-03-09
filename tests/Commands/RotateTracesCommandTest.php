@@ -137,6 +137,245 @@ it('does not drop archives when retention is not configured', function () {
     expect($connection->selectOne("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", [$oldArchive]))->not->toBeNull();
 });
 
+it('rotates using MySQL driver with RENAME TABLE', function () {
+    config(['kolaybi.request-tracer.retention_days' => 0]);
+
+    $outgoing = config('kolaybi.request-tracer.outgoing.table');
+    $incoming = config('kolaybi.request-tracer.incoming.table');
+    $dateSuffix = now()->format('Ymd');
+
+    $mockConnection = Mockery::mock(Connection::class);
+    $mockConnection->shouldReceive('getDriverName')->andReturn('mysql');
+
+    // tableExists check: archive doesn't exist, base table exists
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1',
+            Mockery::on(fn($args) => $args[1] === "{$outgoing}_{$dateSuffix}" || $args[1] === "{$incoming}_{$dateSuffix}"),
+        )
+        ->andReturn(null);
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1',
+            Mockery::on(fn($args) => $args[1] === $outgoing || $args[1] === $incoming),
+        )
+        ->andReturn((object) ['1' => 1]);
+    $mockConnection->shouldReceive('getDatabaseName')->andReturn('test_db');
+
+    // MySQL rotation statements
+    $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/DROP TABLE IF EXISTS/'))->twice();
+    $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/CREATE TABLE .+ LIKE/'))->twice();
+    $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/RENAME TABLE/'))->twice();
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->with(config('kolaybi.request-tracer.connection'))
+        ->andReturn($mockConnection);
+
+    $this->artisan('request-tracer:rotate')
+        ->expectsOutputToContain("Rotated [{$outgoing}]")
+        ->expectsOutputToContain("Rotated [{$incoming}]")
+        ->assertExitCode(0);
+});
+
+it('rotates using PostgreSQL driver with ALTER TABLE RENAME in transaction', function () {
+    config(['kolaybi.request-tracer.retention_days' => 0]);
+
+    $outgoing = config('kolaybi.request-tracer.outgoing.table');
+    $incoming = config('kolaybi.request-tracer.incoming.table');
+    $dateSuffix = now()->format('Ymd');
+
+    $mockConnection = Mockery::mock(Connection::class);
+    $mockConnection->shouldReceive('getDriverName')->andReturn('pgsql');
+
+    // tableExists — archive doesn't exist, base table exists
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM pg_tables WHERE schemaname = ? AND tablename = ? LIMIT 1',
+            Mockery::on(fn($args) => str_ends_with($args[1], "_{$dateSuffix}")),
+        )
+        ->andReturn(null);
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM pg_tables WHERE schemaname = ? AND tablename = ? LIMIT 1',
+            Mockery::on(fn($args) => $args[1] === $outgoing || $args[1] === $incoming),
+        )
+        ->andReturn((object) ['1' => 1]);
+
+    // PgSQL rotation
+    $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/DROP TABLE IF EXISTS/'))->twice();
+    $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/CREATE TABLE .+ \(LIKE .+ INCLUDING ALL\)/'))->twice();
+    $mockConnection->shouldReceive('transaction')->twice()->andReturnUsing(function ($callback) use ($mockConnection) {
+        $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/ALTER TABLE .+ RENAME TO/'));
+        $callback();
+    });
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->with(config('kolaybi.request-tracer.connection'))
+        ->andReturn($mockConnection);
+
+    $this->artisan('request-tracer:rotate')
+        ->expectsOutputToContain("Rotated [{$outgoing}]")
+        ->expectsOutputToContain("Rotated [{$incoming}]")
+        ->assertExitCode(0);
+});
+
+it('skips when SQLite CREATE TABLE SQL is empty', function () {
+    $outgoing = config('kolaybi.request-tracer.outgoing.table');
+    $incoming = config('kolaybi.request-tracer.incoming.table');
+    $dateSuffix = now()->format('Ymd');
+
+    $mockConnection = Mockery::mock(Connection::class);
+    $mockConnection->shouldReceive('getDriverName')->andReturn('sqlite');
+
+    // tableExists — archive doesn't exist, base table exists
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM sqlite_master WHERE type = ? AND name = ? LIMIT 1',
+            Mockery::on(fn($args) => str_ends_with($args[1], "_{$dateSuffix}")),
+        )
+        ->andReturn(null);
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM sqlite_master WHERE type = ? AND name = ? LIMIT 1',
+            Mockery::on(fn($args) => $args[1] === $outgoing || $args[1] === $incoming),
+        )
+        ->andReturn((object) ['1' => 1]);
+
+    // DROP temp table
+    $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/DROP TABLE IF EXISTS/'))->twice();
+
+    // Return null/empty CREATE SQL — should trigger skip
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            Mockery::pattern('/SELECT .* FROM sqlite_master/'),
+            Mockery::on(fn($args) => 'table' === $args[0]),
+        )
+        ->andReturn((object) ['create_sql' => '']);
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->with(config('kolaybi.request-tracer.connection'))
+        ->andReturn($mockConnection);
+
+    $this->artisan('request-tracer:rotate')
+        ->expectsOutputToContain('Could not read CREATE TABLE SQL')
+        ->assertExitCode(0);
+});
+
+it('discovers MySQL archive tables during retention cleanup', function () {
+    config(['kolaybi.request-tracer.retention_days' => 5]);
+
+    $outgoing = config('kolaybi.request-tracer.outgoing.table');
+    $incoming = config('kolaybi.request-tracer.incoming.table');
+    $dateSuffix = now()->format('Ymd');
+    $oldDate = now()->subDays(10)->format('Ymd');
+
+    $mockConnection = Mockery::mock(Connection::class);
+    $mockConnection->shouldReceive('getDriverName')->andReturn('mysql');
+    $mockConnection->shouldReceive('getDatabaseName')->andReturn('test_db');
+
+    // tableExists — archive doesn't exist, base table exists
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1',
+            Mockery::on(fn($args) => str_ends_with($args[1], "_{$dateSuffix}")),
+        )
+        ->andReturn(null);
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1',
+            Mockery::on(fn($args) => $args[1] === $outgoing || $args[1] === $incoming),
+        )
+        ->andReturn((object) ['1' => 1]);
+
+    // MySQL rotation
+    $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/DROP TABLE IF EXISTS/'))->andReturn(true);
+    $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/CREATE TABLE .+ LIKE/'))->andReturn(true);
+    $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/RENAME TABLE/'))->andReturn(true);
+
+    // discoverArchiveTables for retention cleanup — return old archive
+    $mockConnection->shouldReceive('select')
+        ->with(
+            'SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name LIKE ?',
+            Mockery::on(fn($args) => str_contains($args[1], $outgoing)),
+        )
+        ->andReturn([(object) ['table_name' => "{$outgoing}_{$oldDate}"]]);
+    $mockConnection->shouldReceive('select')
+        ->with(
+            'SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name LIKE ?',
+            Mockery::on(fn($args) => str_contains($args[1], $incoming)),
+        )
+        ->andReturn([(object) ['table_name' => "{$incoming}_{$oldDate}"]]);
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->with(config('kolaybi.request-tracer.connection'))
+        ->andReturn($mockConnection);
+
+    $this->artisan('request-tracer:rotate')
+        ->expectsOutputToContain('Dropped 1 old archive')
+        ->assertExitCode(0);
+});
+
+it('discovers PostgreSQL archive tables during retention cleanup', function () {
+    config(['kolaybi.request-tracer.retention_days' => 5]);
+
+    $outgoing = config('kolaybi.request-tracer.outgoing.table');
+    $incoming = config('kolaybi.request-tracer.incoming.table');
+    $dateSuffix = now()->format('Ymd');
+    $oldDate = now()->subDays(10)->format('Ymd');
+
+    $mockConnection = Mockery::mock(Connection::class);
+    $mockConnection->shouldReceive('getDriverName')->andReturn('pgsql');
+
+    // tableExists — archive doesn't exist, base table exists
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM pg_tables WHERE schemaname = ? AND tablename = ? LIMIT 1',
+            Mockery::on(fn($args) => str_ends_with($args[1], "_{$dateSuffix}")),
+        )
+        ->andReturn(null);
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM pg_tables WHERE schemaname = ? AND tablename = ? LIMIT 1',
+            Mockery::on(fn($args) => $args[1] === $outgoing || $args[1] === $incoming),
+        )
+        ->andReturn((object) ['1' => 1]);
+
+    // PgSQL rotation
+    $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/DROP TABLE IF EXISTS/'))->andReturn(true);
+    $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/CREATE TABLE .+ \(LIKE .+ INCLUDING ALL\)/'))->andReturn(true);
+    $mockConnection->shouldReceive('transaction')->andReturnUsing(function ($callback) use ($mockConnection) {
+        $mockConnection->shouldReceive('statement')->with(Mockery::pattern('/ALTER TABLE .+ RENAME TO/'));
+        $callback();
+    });
+
+    // discoverArchiveTables for retention — return old archive
+    $mockConnection->shouldReceive('select')
+        ->with(
+            'SELECT tablename FROM pg_tables WHERE schemaname = ? AND tablename LIKE ?',
+            Mockery::on(fn($args) => str_contains($args[1], $outgoing)),
+        )
+        ->andReturn([(object) ['tablename' => "{$outgoing}_{$oldDate}"]]);
+    $mockConnection->shouldReceive('select')
+        ->with(
+            'SELECT tablename FROM pg_tables WHERE schemaname = ? AND tablename LIKE ?',
+            Mockery::on(fn($args) => str_contains($args[1], $incoming)),
+        )
+        ->andReturn([(object) ['tablename' => "{$incoming}_{$oldDate}"]]);
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->with(config('kolaybi.request-tracer.connection'))
+        ->andReturn($mockConnection);
+
+    $this->artisan('request-tracer:rotate')
+        ->expectsOutputToContain('Dropped 1 old archive')
+        ->assertExitCode(0);
+});
+
 it('warns and skips when database driver is unsupported', function () {
     config(['kolaybi.request-tracer.retention_days' => 0]);
 
