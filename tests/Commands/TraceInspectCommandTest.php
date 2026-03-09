@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
@@ -172,6 +173,29 @@ it('shows extras at -vvv verbosity without --full flag', function () {
     $this->artisan('request-tracer:inspect', ['id' => $trace->id, '-vvv' => true])
         ->expectsOutputToContain('RuntimeException')
         ->expectsOutputToContain('Connection timed out')
+        ->assertExitCode(0);
+});
+
+it('inspects a trace in a rotated archive table', function () {
+    $outgoingTable = config('kolaybi.request-tracer.outgoing.table');
+    $connection = DB::connection('testing');
+
+    $archiveTable = "{$outgoingTable}_20260301";
+    $connection->statement("CREATE TABLE \"{$archiveTable}\" AS SELECT * FROM \"{$outgoingTable}\" WHERE 0");
+
+    $connection->table($archiveTable)->insert([
+        'id'         => '01JARCHIVED00000000000001',
+        'method'     => 'GET',
+        'host'       => 'archived.example.com',
+        'path'       => '/old-endpoint',
+        'status'     => 200,
+        'duration'   => 75,
+        'created_at' => '2026-03-01 12:00:00',
+    ]);
+
+    $this->artisan('request-tracer:inspect', ['id' => '01JARCHIVED00000000000001'])
+        ->expectsOutputToContain('OUTGOING')
+        ->expectsOutputToContain('archived.example.com')
         ->assertExitCode(0);
 });
 

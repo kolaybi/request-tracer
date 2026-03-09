@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
@@ -119,6 +120,71 @@ it('renders dash for null duration in row', function () {
 
     $this->artisan('request-tracer:waterfall', ['trace_id' => 'no-duration-trace'])
         ->expectsOutputToContain('—')
+        ->assertExitCode(0);
+});
+
+it('finds traces in rotated archive tables', function () {
+    $outgoingTable = config('kolaybi.request-tracer.outgoing.table');
+    $connection = DB::connection('testing');
+
+    // Simulate rotation: create archive table and move a trace into it
+    $archiveTable = "{$outgoingTable}_20260301";
+    $connection->statement("CREATE TABLE \"{$archiveTable}\" AS SELECT * FROM \"{$outgoingTable}\" WHERE 0");
+
+    $connection->table($archiveTable)->insert([
+        'id'         => '01JARCHIVED00000000000001',
+        'trace_id'   => 'archived-trace',
+        'method'     => 'GET',
+        'host'       => 'old.example.com',
+        'path'       => '/archived',
+        'status'     => 200,
+        'duration'   => 100,
+        'start'      => '2026-03-01 12:00:00.000',
+        'end'        => '2026-03-01 12:00:00.100',
+        'created_at' => '2026-03-01 12:00:00',
+    ]);
+
+    $this->artisan('request-tracer:waterfall', ['trace_id' => 'archived-trace'])
+        ->expectsOutputToContain('archived-trace')
+        ->expectsOutputToContain('old.example.com')
+        ->assertExitCode(0);
+});
+
+it('combines current and archived traces in waterfall', function () {
+    $outgoingTable = config('kolaybi.request-tracer.outgoing.table');
+    $connection = DB::connection('testing');
+
+    // Current table trace
+    OutgoingRequestTrace::create([
+        'trace_id'   => 'split-trace',
+        'method'     => 'POST',
+        'host'       => 'current.example.com',
+        'path'       => '/new',
+        'status'     => 201,
+        'start'      => '2026-03-09 12:00:00.000',
+        'end'        => '2026-03-09 12:00:00.200',
+        'created_at' => now(),
+    ]);
+
+    // Archived trace with same trace_id
+    $archiveTable = "{$outgoingTable}_20260308";
+    $connection->statement("CREATE TABLE \"{$archiveTable}\" AS SELECT * FROM \"{$outgoingTable}\" WHERE 0");
+
+    $connection->table($archiveTable)->insert([
+        'id'         => '01JARCHIVED00000000000002',
+        'trace_id'   => 'split-trace',
+        'method'     => 'GET',
+        'host'       => 'archived.example.com',
+        'path'       => '/old',
+        'status'     => 200,
+        'start'      => '2026-03-08 12:00:00.000',
+        'end'        => '2026-03-08 12:00:00.100',
+        'created_at' => '2026-03-08 12:00:00',
+    ]);
+
+    $this->artisan('request-tracer:waterfall', ['trace_id' => 'split-trace'])
+        ->expectsOutputToContain('current.example.com')
+        ->expectsOutputToContain('archived.example.com')
         ->assertExitCode(0);
 });
 

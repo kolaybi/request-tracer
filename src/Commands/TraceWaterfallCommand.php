@@ -6,12 +6,14 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
+use KolayBi\RequestTracer\Commands\Concerns\QueriesArchiveTables;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
 class TraceWaterfallCommand extends Command
 {
     use BuildsEndpoint;
+    use QueriesArchiveTables;
 
     protected $signature = 'request-tracer:waterfall {trace_id}';
 
@@ -24,8 +26,8 @@ class TraceWaterfallCommand extends Command
         $incomingModel = config('kolaybi.request-tracer.incoming.model', IncomingRequestTrace::class);
         $outgoingModel = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
 
-        $incomingTraces = $incomingModel::where('trace_id', $traceId)->orderBy('start')->get();
-        $outgoingTraces = $outgoingModel::where('trace_id', $traceId)->orderBy('start')->get();
+        $incomingTraces = $this->queryAcrossTables($incomingModel, 'trace_id', $traceId);
+        $outgoingTraces = $this->queryAcrossTables($outgoingModel, 'trace_id', $traceId);
 
         $allTraces = $incomingTraces->toBase()
             ->map(fn($trace) => ['trace' => $trace, 'type' => 'INCOMING'])

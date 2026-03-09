@@ -4,6 +4,7 @@ namespace KolayBi\RequestTracer\Commands;
 
 use Illuminate\Console\Command;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
+use KolayBi\RequestTracer\Commands\Concerns\QueriesArchiveTables;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -11,6 +12,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class TraceInspectCommand extends Command
 {
     use BuildsEndpoint;
+    use QueriesArchiveTables;
 
     protected $signature = 'request-tracer:inspect {id} {--full}';
 
@@ -23,11 +25,12 @@ class TraceInspectCommand extends Command
         $incomingModel = config('kolaybi.request-tracer.incoming.model', IncomingRequestTrace::class);
         $outgoingModel = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
 
-        $trace = $outgoingModel::find($id);
+        /** @var IncomingRequestTrace|OutgoingRequestTrace|null $trace */
+        $trace = $this->findAcrossTables($outgoingModel, $id);
         $type = 'OUTGOING';
 
         if (!$trace) {
-            $trace = $incomingModel::find($id);
+            $trace = $this->findAcrossTables($incomingModel, $id);
             $type = 'INCOMING';
         }
 
