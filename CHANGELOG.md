@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.2.0](https://github.com/kolaybi/request-tracer/compare/v1.1.1...v1.2.0) (2026-03-09)
+
+### Added
+- Sampling rate for incoming traces (`incoming.sample_rate`)
+- Route filtering for incoming traces (`incoming.only` / `incoming.except`) with wildcard support, env-configurable
+- URL filtering for outgoing traces (`outgoing.only` / `outgoing.except`) with wildcard support, env-configurable
+
 ## [v1.1.1](https://github.com/kolaybi/request-tracer/compare/v1.1.0...v1.1.1)  (2026-03-04)
 
 ### Added
