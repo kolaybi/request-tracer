@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.3.0](https://github.com/kolaybi/request-tracer/compare/v1.2.0...v1.3.0) (2026-03-10)
+
+### Added
+- `QueriesArchiveTables` trait for querying across current and archive tables
+- `request-tracer:diff {id1} {id2}` command — side-by-side trace comparison with metadata diff, header diff (`-v`), and body diff with similarity percentage (`-vv`)
+- `request-tracer:rotate` command — daily table rotation with dated archive tables and automatic cleanup of old archives
+- `request-tracer:search` command — filter traces by host, path, status (exact or range like `5xx`), method, channel, date range, duration, and type
+- `request-tracer:stats` command — aggregate statistics with `--hours` and `--type` filtering, top hosts, top channels, duration stats, and error rate
+- `request-tracer:tail` command — live-tail new traces as they arrive with ULID-based cursor tracking, color-coded status, and `--type`, `--host`, `--status`, `--channel`, `--interval` filters
+- `exclude_body_content_types` config — skip body capture for binary content types (e.g. `image/`, `video/`, `application/pdf`)
+- Query string masking — sensitive keys in query params (e.g. `access_token`, `api_key`) are now masked when `mask_sensitive` is enabled
+
+### Changed
+- Renamed `REQUEST_TRACER_SAMPLE_RATE` env variable to `REQUEST_TRACER_OUTGOING_SAMPLE_RATE` for consistency with `REQUEST_TRACER_INCOMING_SAMPLE_RATE`
+- Removed unnecessary `SerializesModels` trait from `StoreTraceJob` (only carries scalar/array properties)
+- Sensitive key resolution and mask value are computed once per normalize call instead of per-key for better performance
+- Added `created_at` datetime cast to both trace models (supplements existing integer casts from v1.1.0)
+
+### Fixed
+- `extractSoapAction` return type changed to `?string` — prevents `TypeError` when SOAP action is empty and XML body parsing fails
+- `TraceWaterfallCommand` total duration display could go negative due to clock drift — now clamped to zero
+- `maskHeaders` now detects original line endings (`\r\n` vs `\n`) instead of using `PHP_EOL`, preserving header format on all platforms
+
 ## [v1.2.0](https://github.com/kolaybi/request-tracer/compare/v1.1.1...v1.2.0) (2026-03-09)
 
 ### Added

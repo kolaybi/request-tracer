@@ -14,7 +14,7 @@ Standalone request tracing package for Laravel. Captures outgoing HTTP and SOAP 
 composer require kolaybi/request-tracer
 ```
 
-Publish the config and migrations:
+Publish the config:
 
 ```bash
 php artisan vendor:publish --tag=request-tracer-config
@@ -53,7 +53,7 @@ return [
         'enabled'     => env('REQUEST_TRACER_OUTGOING_ENABLED', true),
         'table'       => 'outgoing_request_traces',
         'model'       => OutgoingRequestTrace::class,
-        'sample_rate' => (float) env('REQUEST_TRACER_SAMPLE_RATE', 1.0),
+        'sample_rate' => (float) env('REQUEST_TRACER_OUTGOING_SAMPLE_RATE', 1.0),
         'only'        => env('REQUEST_TRACER_OUTGOING_ONLY', ''),   // Comma-separated host/path patterns (supports wildcards: 'api.example.com*')
         'except'      => env('REQUEST_TRACER_OUTGOING_EXCEPT', ''), // Comma-separated host/path patterns (supports wildcards: '*.internal.com*')
     ],
@@ -167,7 +167,7 @@ REQUEST_TRACER_INCOMING_ENABLED=true
 
 The middleware records every incoming request with method, path, route, status, timing, headers, and optionally the response body.
 
-> **Note:** `response_size` is always recorded regardless of the `capture_response_body` setting. It is measured independently from the Symfony Response object, so you can monitor response sizes without the storage cost of capturing full response bodies.
+> **Note:** `response_size` is always recorded regardless of the `capture_response_body` setting. It is read from the Symfony `Response` content when available, and falls back to the `Content-Length` header when content is unavailable.
 
 ## Debugging
 
@@ -262,11 +262,10 @@ $schedule->command('request-tracer:purge')->daily();
 
 ### Outgoing Traces
 
-- `Http::globalRequestMiddleware` attaches `X-Trace-Started-At` to each request
-- `Http::globalResponseMiddleware` attaches `X-Trace-Finished-At` to each response
-- Channel and extra metadata are carried as `X-Trace-Channel` and `X-Trace-Extra` headers (per-request, no shared state)
+- `RequestSending` listener stores per-request trace metadata (`started_at`) in request attributes and `RequestTimingStore`
+- `Http::channel()` / `Http::traceOf()` and `Http::withTraceExtra()` set per-request metadata in `request_tracer` attributes
 - Event listeners (`ResponseReceived`, `ConnectionFailed`) build trace attributes and dispatch `StoreTraceJob`
-- All `X-Trace-*` headers are stripped before persisting
+- Any `X-Trace-*` headers present on requests/responses are stripped before persisting
 
 ### Incoming Traces
 
