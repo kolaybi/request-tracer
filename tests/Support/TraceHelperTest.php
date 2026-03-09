@@ -302,3 +302,45 @@ it('accepts array config for exclude_body_content_types', function () {
         ->and(TraceHelper::shouldExcludeBody('application/octet-stream'))->toBeTrue()
         ->and(TraceHelper::shouldExcludeBody('application/json'))->toBeFalse();
 });
+
+// ──────────────────────────────────────────────────
+// normalizeQuery
+// ──────────────────────────────────────────────────
+
+it('returns null query unchanged', function () {
+    expect(TraceHelper::normalizeQuery(null))->toBeNull();
+});
+
+it('returns empty query unchanged', function () {
+    expect(TraceHelper::normalizeQuery(''))->toBe('');
+});
+
+it('returns query unchanged when masking disabled', function () {
+    config(['kolaybi.request-tracer.mask_sensitive' => false]);
+
+    expect(TraceHelper::normalizeQuery('access_token=secret&page=1'))->toBe('access_token=secret&page=1');
+});
+
+it('masks sensitive query params when enabled', function () {
+    config([
+        'kolaybi.request-tracer.mask_sensitive' => true,
+        'kolaybi.request-tracer.sensitive_keys' => 'access_token,api_key',
+    ]);
+
+    $result = TraceHelper::normalizeQuery('access_token=secret123&page=1&api_key=abc');
+
+    expect($result)->toContain('access_token=%5BREDACTED%5D')
+        ->and($result)->toContain('api_key=%5BREDACTED%5D')
+        ->and($result)->toContain('page=1');
+});
+
+it('preserves non-sensitive query params', function () {
+    config([
+        'kolaybi.request-tracer.mask_sensitive' => true,
+        'kolaybi.request-tracer.sensitive_keys' => 'token',
+    ]);
+
+    $result = TraceHelper::normalizeQuery('page=1&limit=50');
+
+    expect($result)->toBe('page=1&limit=50');
+});

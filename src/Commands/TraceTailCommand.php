@@ -4,6 +4,7 @@ namespace KolayBi\RequestTracer\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
@@ -32,40 +33,74 @@ class TraceTailCommand extends Command
         $outgoingModel = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
         $incomingModel = config('kolaybi.request-tracer.incoming.model', IncomingRequestTrace::class);
 
-        $lastOutgoingId = (!$type || 'outgoing' === $type)
-            ? ($outgoingModel::orderByDesc('id')->value('id') ?? '')
-            : '';
-        $lastIncomingId = (!$type || 'incoming' === $type)
-            ? ($incomingModel::orderByDesc('id')->value('id') ?? '')
-            : '';
+        // Pre-populate seen IDs within the lookback window so pre-existing traces are never shown
+        $seenIds = [];
+        $cursor = Carbon::now();
+        $lookback = $cursor->copy()->subSeconds($interval * 2);
+
+        if (!$type || 'outgoing' === $type) {
+            foreach ($outgoingModel::where('created_at', '>=', $lookback)->pluck('id') as $id) {
+                $seenIds[$id] = true;
+            }
+        }
+
+        if (!$type || 'incoming' === $type) {
+            foreach ($incomingModel::where('created_at', '>=', $lookback)->pluck('id') as $id) {
+                $seenIds[$id] = true;
+            }
+        }
 
         $this->info("Tailing traces every {$interval}s... (Ctrl+C to stop)");
 
         $polls = 0;
 
         while (true) {
+            // Look back 2x interval to catch late inserts from concurrent processes
+            $since = $cursor->copy()->subSeconds($interval * 2);
+
             if (!$type || 'outgoing' === $type) {
-                $traces = $this->applyFilters($outgoingModel::where('id', '>', $lastOutgoingId), 'outgoing')
+                $traces = $this
+                    ->applyFilters(
+                        $outgoingModel::where('created_at', '>=', $since),
+                        'outgoing',
+                    )
+                    ->orderBy('created_at')
                     ->orderBy('id')
                     ->get();
 
                 /** @var OutgoingRequestTrace $trace */
                 foreach ($traces as $trace) {
-                    $this->renderLine($trace, 'OUTGOING');
-                    $lastOutgoingId = $trace->id;
+                    if (!isset($seenIds[$trace->id])) {
+                        $this->renderLine($trace, 'OUTGOING');
+                        $seenIds[$trace->id] = true;
+                    }
                 }
             }
 
             if (!$type || 'incoming' === $type) {
-                $traces = $this->applyFilters($incomingModel::where('id', '>', $lastIncomingId), 'incoming')
+                $traces = $this
+                    ->applyFilters(
+                        $incomingModel::where('created_at', '>=', $since),
+                        'incoming',
+                    )
+                    ->orderBy('created_at')
                     ->orderBy('id')
                     ->get();
 
                 /** @var IncomingRequestTrace $trace */
                 foreach ($traces as $trace) {
-                    $this->renderLine($trace, 'INCOMING');
-                    $lastIncomingId = $trace->id;
+                    if (!isset($seenIds[$trace->id])) {
+                        $this->renderLine($trace, 'INCOMING');
+                        $seenIds[$trace->id] = true;
+                    }
                 }
+            }
+
+            $cursor = Carbon::now();
+
+            // Prune seen set to prevent memory growth — keep last 500
+            if (count($seenIds) > 1000) {
+                $seenIds = array_slice($seenIds, -500, null, true);
             }
 
             $polls++;
@@ -106,7 +141,7 @@ class TraceTailCommand extends Command
 
     private function renderLine(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): void
     {
-        $time = ($trace->created_at ?? now())->format('H:i:s');
+        $time = Carbon::parse($trace->created_at ?? now())->format('H:i:s');
         $status = $this->colorStatus($trace->status);
         $method = str_pad($trace->method ?? '—', 7);
         $endpoint = Str::limit($this->buildEndpoint($trace, $type), 55);

@@ -165,6 +165,18 @@ it('dispatches event with direction', function () {
     });
 });
 
+it('caps registry at 500 entries', function () {
+    $cb = app(CircuitBreaker::class);
+
+    for ($i = 0; $i < 501; $i++) {
+        $cb->recordSuccess("host-{$i}.example.com", null);
+    }
+
+    $endpoints = $cb->allEndpoints();
+
+    expect(count($endpoints))->toBeLessThanOrEqual(500);
+});
+
 it('returns disabled when config is false', function () {
     config(['kolaybi.request-tracer.circuit_breaker.enabled' => false]);
 

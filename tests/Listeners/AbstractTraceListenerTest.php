@@ -33,6 +33,11 @@ beforeEach(function () {
             $this->persistTrace($attributes);
         }
 
+        public function callPersistTracePreChecked(array $attributes): void
+        {
+            $this->persistTrace($attributes, preChecked: true);
+        }
+
         public function callFormatException(Throwable $e): string
         {
             return $this->formatException($e);
@@ -135,9 +140,47 @@ it('persistTrace updates circuit breaker even when sampling drops the trace', fu
     expect($status['failures'])->toBe(1);
 });
 
+it('persistTrace updates circuit breaker when preChecked is true', function () {
+    config([
+        'kolaybi.request-tracer.circuit_breaker.enabled' => true,
+        'cache.default'                                  => 'array',
+    ]);
+
+    $this->listener->callPersistTracePreChecked([
+        'host'      => 'api.example.com',
+        'path'      => '/v1/users',
+        'status'    => 500,
+        'exception' => null,
+        'start'     => null,
+        'end'       => null,
+    ]);
+
+    $cb = app(CircuitBreaker::class);
+    $status = $cb->getStatus('api.example.com', null);
+
+    expect($status['failures'])->toBe(1);
+});
+
 // ──────────────────────────────────────────────────
 // Depth: buildTraceAttributes
 // ──────────────────────────────────────────────────
+
+it('buildTraceAttributes masks sensitive query params', function () {
+    config([
+        'kolaybi.request-tracer.mask_sensitive' => true,
+        'kolaybi.request-tracer.sensitive_keys' => 'access_token',
+    ]);
+
+    $attrs = $this->listener->callBuildTraceAttributes(
+        url: 'https://api.example.com/v1/users?access_token=secret&page=1',
+        method: 'GET',
+        body: '',
+        headers: [],
+    );
+
+    expect($attrs['query'])->toContain('access_token=%5BREDACTED%5D')
+        ->and($attrs['query'])->toContain('page=1');
+});
 
 it('buildTraceAttributes populates all expected keys', function () {
     $attrs = $this->listener->callBuildTraceAttributes(

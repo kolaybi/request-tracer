@@ -36,6 +36,21 @@ class TraceHelper
             : $headers;
     }
 
+    public static function normalizeQuery(?string $query): ?string
+    {
+        if (null === $query || '' === $query || !self::shouldMaskSensitive()) {
+            return $query;
+        }
+
+        parse_str($query, $parsed);
+
+        if ([] === $parsed) {
+            return $query;
+        }
+
+        return http_build_query(self::maskArrayByKey($parsed));
+    }
+
     public static function normalizeBody(string $body): ?string
     {
         $body = self::sanitizeBody($body);

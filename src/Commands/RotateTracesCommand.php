@@ -74,9 +74,9 @@ class RotateTracesCommand extends Command
         } elseif ('pgsql' === $driver) {
             $connection->statement("CREATE TABLE {$qualifiedTemp} (LIKE {$qualifiedBase} INCLUDING ALL)");
 
-            $connection->transaction(function () use ($connection, $qualifiedBase, $qualifiedArchive, $qualifiedTemp) {
-                $connection->statement("ALTER TABLE {$qualifiedBase} RENAME TO {$qualifiedArchive}");
-                $connection->statement("ALTER TABLE {$qualifiedTemp} RENAME TO {$qualifiedBase}");
+            $connection->transaction(function () use ($connection, $qualifiedBase, $qualifiedTemp, $archiveTable, $baseTable) {
+                $connection->statement("ALTER TABLE {$qualifiedBase} RENAME TO \"{$archiveTable}\"");
+                $connection->statement("ALTER TABLE {$qualifiedTemp} RENAME TO \"{$baseTable}\"");
             });
         } else {
             // SQLite

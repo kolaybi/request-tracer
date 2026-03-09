@@ -13,7 +13,7 @@ class IncomingTraceRecorder
 {
     public function record(Request $request, Response $response, string $start, string $end): void
     {
-        $this->updateCircuitBreaker($request->path(), $response->getStatusCode());
+        $this->updateCircuitBreaker($request->route()?->uri() ?? $request->path(), $response->getStatusCode());
 
         if (!$this->shouldSample() || !$this->shouldTraceRoute($request)) {
             return;
@@ -34,7 +34,7 @@ class IncomingTraceRecorder
             'method'            => $request->method(),
             'host'              => $request->getHost(),
             'path'              => $request->path(),
-            'query'             => $request->getQueryString(),
+            'query'             => TraceHelper::normalizeQuery($request->getQueryString()),
             'route'             => $request->route()?->uri(),
             'request_body'      => $excludeRequestBody ? null : TraceHelper::normalizeBody($request->getContent()),
             'request_headers'   => TraceHelper::normalizeHeaders($request->headers->all()),

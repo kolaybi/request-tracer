@@ -280,6 +280,24 @@ it('only takes precedence over except', function () {
     Queue::assertPushed(StoreTraceJob::class);
 });
 
+it('masks sensitive query params in incoming traces', function () {
+    config([
+        'kolaybi.request-tracer.mask_sensitive' => true,
+        'kolaybi.request-tracer.sensitive_keys' => 'token',
+    ]);
+
+    $request = Request::create('/api/callback?token=secret123&page=1', 'GET');
+    $response = new Response('ok', 200);
+
+    $recorder = new IncomingTraceRecorder();
+    $recorder->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return str_contains($job->attributes['query'], '%5BREDACTED%5D')
+            && str_contains($job->attributes['query'], 'page=1');
+    });
+});
+
 it('updates circuit breaker on incoming 5xx failure', function () {
     config(['kolaybi.request-tracer.circuit_breaker.enabled' => true]);
 

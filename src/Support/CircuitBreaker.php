@@ -109,10 +109,29 @@ class CircuitBreaker
         $registry = $this->cache->get($this->registryKey(), []);
         $key = $direction . ':' . $this->sanitize($host) . ':' . $this->sanitize($channel ?? '_');
 
-        if (!isset($registry[$key])) {
-            $registry[$key] = ['host' => $host, 'channel' => $channel, 'direction' => $direction];
-            $this->cache->forever($this->registryKey(), $registry);
+        if (isset($registry[$key])) {
+            return;
         }
+
+        // Cap registry at 500 entries — evict healthy entries first
+        if (count($registry) >= 500) {
+            foreach ($registry as $existingKey => $entry) {
+                $status = $this->getStatus($entry['host'], $entry['channel'], $entry['direction'] ?? 'outgoing');
+
+                if ($status['healthy']) {
+                    unset($registry[$existingKey]);
+                    break;
+                }
+            }
+
+            // Still full — skip registration
+            if (count($registry) >= 500) {
+                return;
+            }
+        }
+
+        $registry[$key] = ['host' => $host, 'channel' => $channel, 'direction' => $direction];
+        $this->cache->forever($this->registryKey(), $registry);
     }
 
     private function failureThreshold(): int

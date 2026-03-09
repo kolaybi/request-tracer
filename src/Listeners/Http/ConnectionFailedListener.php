@@ -12,6 +12,24 @@ class ConnectionFailedListener extends AbstractTraceListener
     {
         $request = $event->request;
         $exception = $event->exception;
+
+        $willPersist = $this->shouldPersist($request->url());
+
+        if (!$willPersist) {
+            $urlParts = parse_url($request->url());
+            $traceAttributes = $this->extractTraceAttributes($request->attributes());
+
+            $this->updateCircuitBreaker([
+                'host'      => $urlParts['host'] ?? null,
+                'path'      => $urlParts['path'] ?? null,
+                'channel'   => $this->extractTraceString($traceAttributes['channel'] ?? null),
+                'status'    => $exception->getCode(),
+                'exception' => $this->formatException($exception),
+            ]);
+
+            return;
+        }
+
         $traceAttributes = $this->extractTraceAttributes($request->attributes());
 
         $attributes = array_merge(
@@ -33,6 +51,6 @@ class ConnectionFailedListener extends AbstractTraceListener
             ],
         );
 
-        $this->persistTrace($attributes);
+        $this->persistTrace($attributes, preChecked: true);
     }
 }

@@ -39,7 +39,7 @@ abstract class AbstractTraceListener
             'method'            => $method,
             'host'              => $urlParts['host'] ?? null,
             'path'              => $urlParts['path'] ?? null,
-            'query'             => $urlParts['query'] ?? null,
+            'query'             => TraceHelper::normalizeQuery($urlParts['query'] ?? null),
             'request_body'      => TraceHelper::normalizeBody($body),
             'request_headers'   => TraceHelper::normalizeHeaders($headers),
             'request_size'      => strlen($body),
@@ -53,11 +53,25 @@ abstract class AbstractTraceListener
         ];
     }
 
-    protected function persistTrace(array $attributes): void
+    protected function shouldPersist(string $url): bool
+    {
+        if (!$this->shouldSample()) {
+            return false;
+        }
+
+        $urlParts = parse_url($url);
+
+        return $this->shouldTraceUrl([
+            'host' => $urlParts['host'] ?? '',
+            'path' => $urlParts['path'] ?? '',
+        ]);
+    }
+
+    protected function persistTrace(array $attributes, bool $preChecked = false): void
     {
         $this->updateCircuitBreaker($attributes);
 
-        if (!$this->shouldSample() || !$this->shouldTraceUrl($attributes)) {
+        if (!$preChecked && (!$this->shouldSample() || !$this->shouldTraceUrl($attributes))) {
             return;
         }
 
@@ -141,7 +155,7 @@ abstract class AbstractTraceListener
         }
     }
 
-    private function updateCircuitBreaker(array $attributes): void
+    protected function updateCircuitBreaker(array $attributes): void
     {
         $circuitBreaker = app(CircuitBreaker::class);
 
