@@ -4,6 +4,7 @@ namespace KolayBi\RequestTracer\Support;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Contracts\TraceContextProvider;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,7 +15,7 @@ class IncomingTraceRecorder
 {
     public function record(Request $request, Response $response, string $start, string $end): void
     {
-        if (!$this->shouldSample()) {
+        if (!$this->shouldSample() || !$this->shouldTraceRoute($request)) {
             return;
         }
 
@@ -61,6 +62,34 @@ class IncomingTraceRecorder
         }
 
         return TraceHelper::normalizeBody($content);
+    }
+
+    private function shouldTraceRoute(Request $request): bool
+    {
+        $path = $request->path();
+
+        $only = $this->parsePatterns(config('kolaybi.request-tracer.incoming.only', ''));
+
+        if ([] !== $only) {
+            return Str::is($only, $path);
+        }
+
+        $except = $this->parsePatterns(config('kolaybi.request-tracer.incoming.except', ''));
+
+        if ([] !== $except) {
+            return !Str::is($except, $path);
+        }
+
+        return true;
+    }
+
+    private function parsePatterns(array|string $patterns): array
+    {
+        if (is_array($patterns)) {
+            return array_filter($patterns);
+        }
+
+        return array_filter(array_map('trim', explode(',', $patterns)));
     }
 
     private function shouldSample(): bool

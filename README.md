@@ -54,6 +54,8 @@ return [
         'table'       => 'outgoing_request_traces',
         'model'       => OutgoingRequestTrace::class,
         'sample_rate' => (float) env('REQUEST_TRACER_SAMPLE_RATE', 1.0),
+        'only'        => env('REQUEST_TRACER_OUTGOING_ONLY', ''),   // Comma-separated host/path patterns (supports wildcards: 'api.example.com*')
+        'except'      => env('REQUEST_TRACER_OUTGOING_EXCEPT', ''), // Comma-separated host/path patterns (supports wildcards: '*.internal.com*')
     ],
 
     'incoming' => [
@@ -61,6 +63,8 @@ return [
         'table'                 => 'incoming_request_traces',
         'model'                 => IncomingRequestTrace::class,
         'sample_rate'           => (float) env('REQUEST_TRACER_INCOMING_SAMPLE_RATE', 1.0),
+        'only'                  => env('REQUEST_TRACER_INCOMING_ONLY', ''), // Comma-separated paths (supports wildcards: 'api/orders*')
+        'except'                => env('REQUEST_TRACER_INCOMING_EXCEPT', ''), // Comma-separated paths (supports wildcards: 'health*,telescope*')
         'capture_response_body' => (bool) env('REQUEST_TRACER_INCOMING_CAPTURE_RESPONSE', false),
     ],
 ];

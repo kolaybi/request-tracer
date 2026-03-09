@@ -54,7 +54,7 @@ abstract class AbstractTraceListener
 
     protected function persistTrace(array $attributes): void
     {
-        if (!$this->shouldSample()) {
+        if (!$this->shouldSample() || !$this->shouldTraceUrl($attributes)) {
             return;
         }
 
@@ -136,6 +136,34 @@ abstract class AbstractTraceListener
         } catch (Throwable) {
             return null;
         }
+    }
+
+    private function shouldTraceUrl(array $attributes): bool
+    {
+        $url = trim(($attributes['host'] ?? '') . ($attributes['path'] ?? ''), '/');
+
+        $only = $this->parsePatterns(config('kolaybi.request-tracer.outgoing.only', ''));
+
+        if ([] !== $only) {
+            return Str::is($only, $url);
+        }
+
+        $except = $this->parsePatterns(config('kolaybi.request-tracer.outgoing.except', ''));
+
+        if ([] !== $except) {
+            return !Str::is($except, $url);
+        }
+
+        return true;
+    }
+
+    private function parsePatterns(array|string $patterns): array
+    {
+        if (is_array($patterns)) {
+            return array_filter($patterns);
+        }
+
+        return array_filter(array_map('trim', explode(',', $patterns)));
     }
 
     private function shouldSample(): bool

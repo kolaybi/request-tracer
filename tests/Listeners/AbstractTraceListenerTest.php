@@ -294,3 +294,78 @@ it('extractTraceAttributes returns empty array when value is not an array', func
 
     expect($result)->toBe([]);
 });
+
+// ──────────────────────────────────────────────────
+// Depth: outgoing URL filtering (only / except)
+// ──────────────────────────────────────────────────
+
+it('traces URL when no only/except patterns configured', function () {
+    config([
+        'kolaybi.request-tracer.outgoing.only'        => '',
+        'kolaybi.request-tracer.outgoing.except'      => '',
+        'kolaybi.request-tracer.outgoing.sample_rate' => 1.0,
+    ]);
+
+    $this->listener->callPersistTrace(['host' => 'api.example.com', 'path' => '/v1/orders']);
+
+    Queue::assertPushed(StoreTraceJob::class);
+});
+
+it('traces URL matching only patterns', function () {
+    config([
+        'kolaybi.request-tracer.outgoing.only'        => 'api.example.com*',
+        'kolaybi.request-tracer.outgoing.sample_rate' => 1.0,
+    ]);
+
+    $this->listener->callPersistTrace(['host' => 'api.example.com', 'path' => '/v1/orders']);
+
+    Queue::assertPushed(StoreTraceJob::class);
+});
+
+it('skips URL not matching only patterns', function () {
+    config([
+        'kolaybi.request-tracer.outgoing.only'        => 'api.example.com*',
+        'kolaybi.request-tracer.outgoing.sample_rate' => 1.0,
+    ]);
+
+    $this->listener->callPersistTrace(['host' => 'internal.service.local', 'path' => '/health']);
+
+    Queue::assertNotPushed(StoreTraceJob::class);
+});
+
+it('skips URL matching except patterns', function () {
+    config([
+        'kolaybi.request-tracer.outgoing.only'        => '',
+        'kolaybi.request-tracer.outgoing.except'      => '*.internal.com*',
+        'kolaybi.request-tracer.outgoing.sample_rate' => 1.0,
+    ]);
+
+    $this->listener->callPersistTrace(['host' => 'svc.internal.com', 'path' => '/api/data']);
+
+    Queue::assertNotPushed(StoreTraceJob::class);
+});
+
+it('traces URL not matching except patterns', function () {
+    config([
+        'kolaybi.request-tracer.outgoing.only'        => '',
+        'kolaybi.request-tracer.outgoing.except'      => '*.internal.com*',
+        'kolaybi.request-tracer.outgoing.sample_rate' => 1.0,
+    ]);
+
+    $this->listener->callPersistTrace(['host' => 'api.example.com', 'path' => '/v1/orders']);
+
+    Queue::assertPushed(StoreTraceJob::class);
+});
+
+it('only takes precedence over except for outgoing', function () {
+    config([
+        'kolaybi.request-tracer.outgoing.only'        => 'api.example.com*',
+        'kolaybi.request-tracer.outgoing.except'      => 'api.example.com/v1/orders*',
+        'kolaybi.request-tracer.outgoing.sample_rate' => 1.0,
+    ]);
+
+    $this->listener->callPersistTrace(['host' => 'api.example.com', 'path' => '/v1/orders']);
+
+    // 'only' matches, so it's traced — 'except' is ignored when 'only' is set
+    Queue::assertPushed(StoreTraceJob::class);
+});

@@ -220,6 +220,65 @@ it('records trace at sample rate 1', function () {
     Queue::assertPushed(StoreTraceJob::class);
 });
 
+it('skips routes matching except patterns', function () {
+    config(['kolaybi.request-tracer.incoming.except' => ['health*', 'telescope*']]);
+
+    $request = Request::create('/health/check', 'GET');
+    $response = new Response('ok', 200);
+
+    new IncomingTraceRecorder()->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
+
+    Queue::assertNotPushed(StoreTraceJob::class);
+});
+
+it('traces routes not matching except patterns', function () {
+    config(['kolaybi.request-tracer.incoming.except' => ['health*']]);
+
+    $request = Request::create('/api/users', 'GET');
+    $response = new Response('ok', 200);
+
+    new IncomingTraceRecorder()->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
+
+    Queue::assertPushed(StoreTraceJob::class);
+});
+
+it('only traces routes matching only patterns', function () {
+    config(['kolaybi.request-tracer.incoming.only' => ['api/*']]);
+
+    $request = Request::create('/api/orders', 'GET');
+    $response = new Response('ok', 200);
+
+    new IncomingTraceRecorder()->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
+
+    Queue::assertPushed(StoreTraceJob::class);
+});
+
+it('skips routes not matching only patterns', function () {
+    config(['kolaybi.request-tracer.incoming.only' => ['api/*']]);
+
+    $request = Request::create('/admin/dashboard', 'GET');
+    $response = new Response('ok', 200);
+
+    new IncomingTraceRecorder()->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
+
+    Queue::assertNotPushed(StoreTraceJob::class);
+});
+
+it('only takes precedence over except', function () {
+    config([
+        'kolaybi.request-tracer.incoming.only'    => ['api/*'],
+        'kolaybi.request-tracer.incoming.except'  => ['api/orders*'],
+    ]);
+
+    $request = Request::create('/api/orders', 'GET');
+    $response = new Response('ok', 200);
+
+    new IncomingTraceRecorder()->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
+
+    // 'only' matches, so it's traced — 'except' is ignored when 'only' is set
+    Queue::assertPushed(StoreTraceJob::class);
+});
+
 it('clamps negative Content-Length to zero', function () {
     $request = Request::create('/test', 'GET');
 
