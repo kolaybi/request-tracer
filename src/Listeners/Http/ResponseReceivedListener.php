@@ -20,13 +20,11 @@ class ResponseReceivedListener extends AbstractTraceListener
             $urlParts = parse_url($request->url());
             $traceAttributes = $this->extractTraceAttributes($request->attributes());
 
-            $this->updateCircuitBreaker([
-                'host'      => $urlParts['host'] ?? null,
-                'path'      => $urlParts['path'] ?? null,
-                'channel'   => $this->extractTraceString($traceAttributes['channel'] ?? null),
-                'status'    => $response->status(),
-                'exception' => null,
-            ]);
+            $this->recordCircuitBreaker(
+                host: $urlParts['host'] ?? '',
+                channel: $this->extractTraceString($traceAttributes['channel'] ?? null),
+                status: $response->status(),
+            );
 
             return;
         }

@@ -177,6 +177,26 @@ it('caps registry at 500 entries', function () {
     expect(count($endpoints))->toBeLessThanOrEqual(500);
 });
 
+it('ignores record calls with empty host', function () {
+    $cb = app(CircuitBreaker::class);
+
+    $cb->record('', null, 500);
+
+    expect($cb->allEndpoints())->toBeEmpty();
+});
+
+it('does not treat null status as failure when no exception exists', function () {
+    $cb = app(CircuitBreaker::class);
+
+    $cb->record('api.example.com', null, null);
+
+    $status = $cb->getStatus('api.example.com', null);
+
+    expect($status['failures'])->toBe(0)
+        ->and($status['healthy'])->toBeTrue()
+        ->and($status['tripped'])->toBeFalse();
+});
+
 it('returns disabled when config is false', function () {
     config(['kolaybi.request-tracer.circuit_breaker.enabled' => false]);
 

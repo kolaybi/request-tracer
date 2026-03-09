@@ -11,9 +11,21 @@ use Symfony\Component\HttpFoundation\Response;
 
 class IncomingTraceRecorder
 {
+    private ?CircuitBreaker $circuitBreaker;
+
+    public function __construct(?CircuitBreaker $circuitBreaker = null)
+    {
+        $this->circuitBreaker = $circuitBreaker;
+    }
+
     public function record(Request $request, Response $response, string $start, string $end): void
     {
-        $this->updateCircuitBreaker($request->route()?->uri() ?? $request->path(), $response->getStatusCode());
+        $this->circuitBreaker()->record(
+            host: '/' . ltrim($request->route()?->uri() ?? $request->path(), '/'),
+            channel: null,
+            status: $response->getStatusCode(),
+            direction: 'incoming',
+        );
 
         if (!$this->shouldSample() || !$this->shouldTraceRoute($request)) {
             return;
@@ -102,21 +114,6 @@ class IncomingTraceRecorder
         return $rate >= 1.0 || (mt_rand() / mt_getrandmax()) < $rate;
     }
 
-    private function updateCircuitBreaker(string $path, int $status): void
-    {
-        $circuitBreaker = app(CircuitBreaker::class);
-
-        if (!$circuitBreaker->isEnabled()) {
-            return;
-        }
-
-        $endpoint = '/' . ltrim($path, '/');
-
-        $status >= 500
-            ? $circuitBreaker->recordFailure($endpoint, null, 'incoming')
-            : $circuitBreaker->recordSuccess($endpoint, null, 'incoming');
-    }
-
     private function resolveResponseSize(Response $response): ?int
     {
         $content = $response->getContent();
@@ -132,5 +129,10 @@ class IncomingTraceRecorder
         }
 
         return max(0, (int) $contentLength);
+    }
+
+    private function circuitBreaker(): CircuitBreaker
+    {
+        return $this->circuitBreaker ??= app(CircuitBreaker::class);
     }
 }

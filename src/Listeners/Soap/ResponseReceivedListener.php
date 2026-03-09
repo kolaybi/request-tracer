@@ -19,13 +19,11 @@ class ResponseReceivedListener extends AbstractTraceListener
         if (!$willPersist) {
             $urlParts = parse_url($event->location);
 
-            $this->updateCircuitBreaker([
-                'host'      => $urlParts['host'] ?? null,
-                'path'      => $urlParts['path'] ?? null,
-                'channel'   => $event->channel,
-                'status'    => $this->extractStatusCode($soapClient),
-                'exception' => null,
-            ]);
+            $this->recordCircuitBreaker(
+                host: $urlParts['host'] ?? '',
+                channel: $event->channel,
+                status: $this->extractStatusCode($soapClient),
+            );
 
             return;
         }

@@ -17,13 +17,12 @@ class ConnectionFailedListener extends AbstractTraceListener
         if (!$willPersist) {
             $urlParts = parse_url($event->location);
 
-            $this->updateCircuitBreaker([
-                'host'      => $urlParts['host'] ?? null,
-                'path'      => $urlParts['path'] ?? null,
-                'channel'   => $event->channel,
-                'status'    => $exception->getCode(),
-                'exception' => $this->formatException($exception),
-            ]);
+            $this->recordCircuitBreaker(
+                host: $urlParts['host'] ?? '',
+                channel: $event->channel,
+                status: $exception->getCode(),
+                hasException: true,
+            );
 
             return;
         }

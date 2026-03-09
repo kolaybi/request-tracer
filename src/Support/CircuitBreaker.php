@@ -19,6 +19,23 @@ class CircuitBreaker
         return (bool) config('kolaybi.request-tracer.circuit_breaker.enabled', false);
     }
 
+    public function record(string $host, ?string $channel, ?int $status, bool $hasException = false, string $direction = 'outgoing'): void
+    {
+        if (!$this->isEnabled()) {
+            return;
+        }
+
+        if ('' === trim($host)) {
+            return;
+        }
+
+        $isFailure = $hasException || (null !== $status && (0 === $status || $status >= 500));
+
+        $isFailure
+            ? $this->recordFailure($host, $channel, $direction)
+            : $this->recordSuccess($host, $channel, $direction);
+    }
+
     public function recordFailure(string $host, ?string $channel, string $direction = 'outgoing'): void
     {
         $key = $this->failureKey($host, $channel, $direction);
