@@ -11,7 +11,6 @@ use Illuminate\Support\ServiceProvider;
 use KolayBi\RequestTracer\Commands\PurgeTracesCommand;
 use KolayBi\RequestTracer\Commands\RotateTracesCommand;
 use KolayBi\RequestTracer\Commands\TraceDiffCommand;
-use KolayBi\RequestTracer\Commands\TraceHealthCommand;
 use KolayBi\RequestTracer\Commands\TraceInspectCommand;
 use KolayBi\RequestTracer\Commands\TraceSearchCommand;
 use KolayBi\RequestTracer\Commands\TraceStatsCommand;
@@ -27,7 +26,6 @@ use KolayBi\RequestTracer\Listeners\Http\ResponseReceivedListener as HttpRespons
 use KolayBi\RequestTracer\Listeners\Soap\ConnectionFailedListener as SoapConnectionFailedListener;
 use KolayBi\RequestTracer\Listeners\Soap\ResponseReceivedListener as SoapResponseReceivedListener;
 use KolayBi\RequestTracer\Mixins\HttpTracingMixin;
-use KolayBi\RequestTracer\Support\CircuitBreaker;
 use ReflectionException;
 
 class RequestTracerServiceProvider extends ServiceProvider
@@ -40,10 +38,6 @@ class RequestTracerServiceProvider extends ServiceProvider
             $class = config('kolaybi.request-tracer.context_provider');
 
             return $class ? $this->app->make($class) : new NullContextProvider();
-        });
-
-        $this->app->singleton(CircuitBreaker::class, function () {
-            return new CircuitBreaker(app('cache.store'));
         });
     }
 
@@ -77,7 +71,6 @@ class RequestTracerServiceProvider extends ServiceProvider
                 PurgeTracesCommand::class,
                 RotateTracesCommand::class,
                 TraceDiffCommand::class,
-                TraceHealthCommand::class,
                 TraceInspectCommand::class,
                 TraceSearchCommand::class,
                 TraceStatsCommand::class,

@@ -78,18 +78,32 @@ class RotateTracesCommand extends Command
                 $connection->statement("ALTER TABLE {$qualifiedBase} RENAME TO \"{$archiveTable}\"");
                 $connection->statement("ALTER TABLE {$qualifiedTemp} RENAME TO \"{$baseTable}\"");
             });
-        } else {
-            // SQLite
-            $createSql = $connection->selectOne("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [$baseTable]);
+        } elseif ('sqlite' === $driver) {
+            $row = $connection->selectOne(
+                'SELECT "sql" AS create_sql FROM sqlite_master WHERE type = ? AND name = ?',
+                ['table', $baseTable],
+            );
+            $createSql = is_object($row) ? ($row->create_sql ?? null) : ($row['create_sql'] ?? null);
+
+            if (!is_string($createSql) || '' === trim($createSql)) {
+                $this->warn("Could not read CREATE TABLE SQL for [{$baseTable}] — skipping.");
+
+                return;
+            }
+
             $tempSql = preg_replace(
                 '/CREATE TABLE\s+"?' . preg_quote($baseTable, '/') . '"?/',
                 "CREATE TABLE \"{$tempTable}\"",
-                $createSql->sql,
+                $createSql,
             );
             $connection->statement($tempSql);
 
             $connection->statement("ALTER TABLE {$qualifiedBase} RENAME TO {$qualifiedArchive}");
             $connection->statement("ALTER TABLE {$qualifiedTemp} RENAME TO {$qualifiedBase}");
+        } else {
+            $this->warn("Unsupported database driver [{$driver}] for rotate command.");
+
+            return;
         }
 
         $this->info("Rotated [{$baseTable}] → [{$archiveTable}]");
@@ -142,11 +156,14 @@ class RotateTracesCommand extends Command
             );
         }
 
-        // SQLite
-        return (bool) $connection->selectOne(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
-            [$table],
-        );
+        if ('sqlite' === $driver) {
+            return (bool) $connection->selectOne(
+                'SELECT 1 FROM sqlite_master WHERE type = ? AND name = ? LIMIT 1',
+                ['table', $table],
+            );
+        }
+
+        return false;
     }
 
     private function qualifiedTable(string $table, ?string $schema): string

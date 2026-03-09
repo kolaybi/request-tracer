@@ -11,22 +11,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class IncomingTraceRecorder
 {
-    private ?CircuitBreaker $circuitBreaker;
-
-    public function __construct(?CircuitBreaker $circuitBreaker = null)
-    {
-        $this->circuitBreaker = $circuitBreaker;
-    }
-
     public function record(Request $request, Response $response, string $start, string $end): void
     {
-        $this->circuitBreaker()->record(
-            host: '/' . ltrim($request->route()?->uri() ?? $request->path(), '/'),
-            channel: null,
-            status: $response->getStatusCode(),
-            direction: 'incoming',
-        );
-
         if (!$this->shouldSample() || !$this->shouldTraceRoute($request)) {
             return;
         }
@@ -129,10 +115,5 @@ class IncomingTraceRecorder
         }
 
         return max(0, (int) $contentLength);
-    }
-
-    private function circuitBreaker(): CircuitBreaker
-    {
-        return $this->circuitBreaker ??= app(CircuitBreaker::class);
     }
 }

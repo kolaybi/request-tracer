@@ -14,20 +14,6 @@ class ResponseReceivedListener extends AbstractTraceListener
     {
         $soapClient = $event->soapClient;
 
-        $willPersist = $this->shouldPersist($event->location);
-
-        if (!$willPersist) {
-            $urlParts = parse_url($event->location);
-
-            $this->recordCircuitBreaker(
-                host: $urlParts['host'] ?? '',
-                channel: $event->channel,
-                status: $this->extractStatusCode($soapClient),
-            );
-
-            return;
-        }
-
         $attributes = array_merge(
             $this->buildTraceAttributes(
                 url: $event->location,
@@ -49,7 +35,7 @@ class ResponseReceivedListener extends AbstractTraceListener
             ],
         );
 
-        $this->persistTrace($attributes, preChecked: true);
+        $this->persistTrace($attributes);
     }
 
     private function extractStatusCode(SoapClient $soapClient): int

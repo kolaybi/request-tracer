@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Contracts\TraceContextProvider;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
-use KolayBi\RequestTracer\Support\CircuitBreaker;
 use KolayBi\RequestTracer\Support\RequestTimingStore;
 use KolayBi\RequestTracer\Support\Timestamp;
 use KolayBi\RequestTracer\Support\TraceHelper;
@@ -15,13 +14,6 @@ use Throwable;
 
 abstract class AbstractTraceListener
 {
-    private ?CircuitBreaker $circuitBreaker;
-
-    public function __construct(?CircuitBreaker $circuitBreaker = null)
-    {
-        $this->circuitBreaker = $circuitBreaker;
-    }
-
     protected function buildTraceAttributes(
         string $url,
         string $method,
@@ -60,56 +52,15 @@ abstract class AbstractTraceListener
         ];
     }
 
-    protected function shouldPersist(string $url): bool
+    protected function persistTrace(array $attributes): void
     {
-        if (!$this->shouldSample()) {
-            return false;
-        }
-
-        $urlParts = parse_url($url);
-
-        return $this->shouldTraceUrl([
-            'host' => $urlParts['host'] ?? '',
-            'path' => $urlParts['path'] ?? '',
-        ]);
-    }
-
-    protected function persistTrace(array $attributes, bool $preChecked = false): void
-    {
-        $this->recordCircuitBreaker(
-            host: $attributes['host'] ?? '',
-            channel: $attributes['channel'] ?? null,
-            status: $attributes['status'] ?? null,
-            hasException: !empty($attributes['exception']),
-        );
-
-        if (!$preChecked && (!$this->shouldSample() || !$this->shouldTraceUrl($attributes))) {
+        if (!$this->shouldSample() || !$this->shouldTraceUrl($attributes)) {
             return;
         }
 
         $modelClass = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
 
         TraceHelper::dispatchTrace($attributes, $modelClass);
-    }
-
-    protected function recordCircuitBreaker(
-        string $host,
-        ?string $channel,
-        ?int $status,
-        bool $hasException = false,
-        string $direction = 'outgoing',
-    ): void {
-        if (!config('kolaybi.request-tracer.circuit_breaker.enabled', false)) {
-            return;
-        }
-
-        $this->circuitBreaker()->record(
-            host: $host,
-            channel: $channel,
-            status: $status,
-            hasException: $hasException,
-            direction: $direction,
-        );
     }
 
     protected function formatException(Throwable $e): string
@@ -185,11 +136,6 @@ abstract class AbstractTraceListener
         } catch (Throwable) {
             return null;
         }
-    }
-
-    private function circuitBreaker(): CircuitBreaker
-    {
-        return $this->circuitBreaker ??= app(CircuitBreaker::class);
     }
 
     private function shouldTraceUrl(array $attributes): bool

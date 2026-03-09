@@ -14,21 +14,6 @@ class ResponseReceivedListener extends AbstractTraceListener
         $request = $event->request;
         $response = $event->response;
 
-        $willPersist = $this->shouldPersist($request->url());
-
-        if (!$willPersist) {
-            $urlParts = parse_url($request->url());
-            $traceAttributes = $this->extractTraceAttributes($request->attributes());
-
-            $this->recordCircuitBreaker(
-                host: $urlParts['host'] ?? '',
-                channel: $this->extractTraceString($traceAttributes['channel'] ?? null),
-                status: $response->status(),
-            );
-
-            return;
-        }
-
         $traceAttributes = $this->extractTraceAttributes($request->attributes());
 
         $requestHeaders = $request->headers();
@@ -61,6 +46,6 @@ class ResponseReceivedListener extends AbstractTraceListener
             ],
         );
 
-        $this->persistTrace($attributes, preChecked: true);
+        $this->persistTrace($attributes);
     }
 }

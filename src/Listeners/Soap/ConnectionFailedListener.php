@@ -12,21 +12,6 @@ class ConnectionFailedListener extends AbstractTraceListener
         $soapClient = $event->soapClient;
         $exception = $event->exception;
 
-        $willPersist = $this->shouldPersist($event->location);
-
-        if (!$willPersist) {
-            $urlParts = parse_url($event->location);
-
-            $this->recordCircuitBreaker(
-                host: $urlParts['host'] ?? '',
-                channel: $event->channel,
-                status: $exception->getCode(),
-                hasException: true,
-            );
-
-            return;
-        }
-
         $attributes = array_merge(
             $this->buildTraceAttributes(
                 url: $event->location,
@@ -47,6 +32,6 @@ class ConnectionFailedListener extends AbstractTraceListener
             ],
         );
 
-        $this->persistTrace($attributes, preChecked: true);
+        $this->persistTrace($attributes);
     }
 }

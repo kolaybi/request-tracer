@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Queue;
 use KolayBi\RequestTracer\Contracts\TraceContextProvider;
 use KolayBi\RequestTracer\Jobs\StoreTraceJob;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
-use KolayBi\RequestTracer\Support\CircuitBreaker;
 use KolayBi\RequestTracer\Support\IncomingTraceRecorder;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
@@ -296,77 +295,6 @@ it('masks sensitive query params in incoming traces', function () {
         return str_contains($job->attributes['query'], '%5BREDACTED%5D')
             && str_contains($job->attributes['query'], 'page=1');
     });
-});
-
-it('updates circuit breaker on incoming 5xx failure', function () {
-    config(['kolaybi.request-tracer.circuit_breaker.enabled' => true]);
-
-    $request = Request::create('/api/orders', 'POST');
-    $response = new Response('Internal Server Error', 500);
-
-    $recorder = new IncomingTraceRecorder();
-    $recorder->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:01.000000');
-
-    $cb = app(CircuitBreaker::class);
-    $status = $cb->getStatus('/api/orders', null, 'incoming');
-
-    expect($status['failures'])->toBe(1)
-        ->and($status['healthy'])->toBeFalse()
-        ->and($status['direction'])->toBe('incoming');
-});
-
-it('updates circuit breaker on incoming success', function () {
-    config(['kolaybi.request-tracer.circuit_breaker.enabled' => true]);
-
-    $cb = app(CircuitBreaker::class);
-    $cb->recordFailure('/api/orders', null, 'incoming');
-
-    $request = Request::create('/api/orders', 'GET');
-    $response = new Response('ok', 200);
-
-    $recorder = new IncomingTraceRecorder();
-    $recorder->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:00.100000');
-
-    $status = $cb->getStatus('/api/orders', null, 'incoming');
-
-    expect($status['failures'])->toBe(0)
-        ->and($status['healthy'])->toBeTrue();
-});
-
-it('updates circuit breaker even when sampling drops the trace', function () {
-    config([
-        'kolaybi.request-tracer.incoming.sample_rate'    => 0.0,
-        'kolaybi.request-tracer.circuit_breaker.enabled' => true,
-    ]);
-
-    $request = Request::create('/api/orders', 'POST');
-    $response = new Response('error', 500);
-
-    $recorder = new IncomingTraceRecorder();
-    $recorder->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:01.000000');
-
-    Queue::assertNotPushed(StoreTraceJob::class);
-
-    $cb = app(CircuitBreaker::class);
-    $status = $cb->getStatus('/api/orders', null, 'incoming');
-
-    expect($status['failures'])->toBe(1);
-});
-
-it('does not update circuit breaker when disabled', function () {
-    config(['kolaybi.request-tracer.circuit_breaker.enabled' => false]);
-
-    $request = Request::create('/api/orders', 'POST');
-    $response = new Response('error', 500);
-
-    $recorder = new IncomingTraceRecorder();
-    $recorder->record($request, $response, '2026-01-01 00:00:00.000000', '2026-01-01 00:00:01.000000');
-
-    $cb = app(CircuitBreaker::class);
-    $status = $cb->getStatus('/api/orders', null, 'incoming');
-
-    expect($status['failures'])->toBe(0)
-        ->and($status['healthy'])->toBeTrue();
 });
 
 it('clamps negative Content-Length to zero', function () {

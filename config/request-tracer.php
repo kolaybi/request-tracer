@@ -53,11 +53,4 @@ return [
         'except'                => env('REQUEST_TRACER_INCOMING_EXCEPT', ''), // Comma-separated paths (supports wildcards: 'health*,telescope*')
         'capture_response_body' => (bool) env('REQUEST_TRACER_INCOMING_CAPTURE_RESPONSE', false),
     ],
-
-    // Circuit breaker (cache-based)
-    'circuit_breaker'            => [
-        'enabled'           => (bool) env('REQUEST_TRACER_CB_ENABLED', false),
-        'failure_threshold' => (int) env('REQUEST_TRACER_CB_THRESHOLD', 5),
-        'recovery_after'    => (int) env('REQUEST_TRACER_CB_RECOVERY', 60), // seconds
-    ],
 ];
