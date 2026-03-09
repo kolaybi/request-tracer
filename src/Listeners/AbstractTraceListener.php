@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Contracts\TraceContextProvider;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
+use KolayBi\RequestTracer\Support\CircuitBreaker;
 use KolayBi\RequestTracer\Support\RequestTimingStore;
 use KolayBi\RequestTracer\Support\Timestamp;
 use KolayBi\RequestTracer\Support\TraceHelper;
@@ -61,6 +62,8 @@ abstract class AbstractTraceListener
         $modelClass = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
 
         TraceHelper::dispatchTrace($attributes, $modelClass);
+
+        $this->updateCircuitBreaker($attributes);
     }
 
     protected function formatException(Throwable $e): string
@@ -136,6 +139,30 @@ abstract class AbstractTraceListener
         } catch (Throwable) {
             return null;
         }
+    }
+
+    private function updateCircuitBreaker(array $attributes): void
+    {
+        $circuitBreaker = app(CircuitBreaker::class);
+
+        if (!$circuitBreaker->isEnabled()) {
+            return;
+        }
+
+        $host = $attributes['host'] ?? null;
+
+        if (null === $host) {
+            return;
+        }
+
+        $channel = $attributes['channel'] ?? null;
+        $isFailure = 0 === ($attributes['status'] ?? null)
+            || ($attributes['status'] ?? 0) >= 500
+            || !empty($attributes['exception']);
+
+        $isFailure
+            ? $circuitBreaker->recordFailure($host, $channel)
+            : $circuitBreaker->recordSuccess($host, $channel);
     }
 
     private function shouldTraceUrl(array $attributes): bool
