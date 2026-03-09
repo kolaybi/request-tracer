@@ -49,15 +49,18 @@ class TraceStatsCommand extends Command
             return;
         }
 
-        $stats = $query->toBase()->selectRaw('
-            COUNT(*) as total,
-            AVG(duration) as avg_duration,
-            MIN(duration) as min_duration,
-            MAX(duration) as max_duration,
-            SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END) as server_errors,
-            SUM(CASE WHEN status >= 400 AND status < 500 THEN 1 ELSE 0 END) as client_errors,
-            SUM(CASE WHEN status >= 200 AND status < 300 THEN 1 ELSE 0 END) as success
-        ')->first();
+        $stats = $query
+            ->toBase()
+            ->selectRaw(
+                'COUNT(*) as total,
+                AVG(duration) as avg_duration,
+                MIN(duration) as min_duration,
+                MAX(duration) as max_duration,
+                SUM(CASE WHEN status >= 500 THEN 1 ELSE 0 END) as server_errors,
+                SUM(CASE WHEN status >= 400 AND status < 500 THEN 1 ELSE 0 END) as client_errors,
+                SUM(CASE WHEN status >= 200 AND status < 300 THEN 1 ELSE 0 END) as success',
+            )
+            ->first();
 
         $errorRate = $total > 0 ? round(($stats->server_errors / $total) * 100, 1) : 0;
 
@@ -81,7 +84,7 @@ class TraceStatsCommand extends Command
 
         if ($topHosts->isNotEmpty()) {
             $this->newLine();
-            $this->components->twoColumnDetail("  <fg=gray>Top Hosts</>");
+            $this->components->twoColumnDetail('  <fg=gray>Top Hosts</>');
 
             foreach ($topHosts as $row) {
                 $this->components->twoColumnDetail("    {$row->host}", number_format($row->cnt));
@@ -100,7 +103,7 @@ class TraceStatsCommand extends Command
 
             if ($topChannels->isNotEmpty()) {
                 $this->newLine();
-                $this->components->twoColumnDetail("  <fg=gray>Top Channels</>");
+                $this->components->twoColumnDetail('  <fg=gray>Top Channels</>');
 
                 foreach ($topChannels as $row) {
                     $this->components->twoColumnDetail("    {$row->channel}", number_format($row->cnt));

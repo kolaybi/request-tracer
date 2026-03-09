@@ -47,6 +47,33 @@ class TraceHelper
         return self::truncateBody($body);
     }
 
+    public static function shouldExcludeBody(?string $contentType): bool
+    {
+        if (null === $contentType || '' === $contentType) {
+            return false;
+        }
+
+        $prefixes = config('kolaybi.request-tracer.exclude_body_content_types', '');
+
+        if (is_string($prefixes)) {
+            $prefixes = array_filter(array_map('trim', explode(',', $prefixes)));
+        }
+
+        if (!is_array($prefixes) || [] === $prefixes) {
+            return false;
+        }
+
+        $contentType = strtolower(trim(explode(';', $contentType)[0]));
+
+        foreach ($prefixes as $prefix) {
+            if (str_starts_with($contentType, strtolower(trim($prefix)))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private static function shouldMaskSensitive(): bool
     {
         return (bool) config('kolaybi.request-tracer.mask_sensitive', false);
@@ -159,33 +186,6 @@ class TraceHelper
         }
 
         return $values;
-    }
-
-    public static function shouldExcludeBody(?string $contentType): bool
-    {
-        if (null === $contentType || '' === $contentType) {
-            return false;
-        }
-
-        $prefixes = config('kolaybi.request-tracer.exclude_body_content_types', '');
-
-        if (is_string($prefixes)) {
-            $prefixes = array_filter(array_map('trim', explode(',', $prefixes)));
-        }
-
-        if (!is_array($prefixes) || [] === $prefixes) {
-            return false;
-        }
-
-        $contentType = strtolower(trim(explode(';', $contentType)[0]));
-
-        foreach ($prefixes as $prefix) {
-            if (str_starts_with($contentType, strtolower(trim($prefix)))) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static function sanitizeBody(string $body): string

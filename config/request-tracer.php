@@ -18,8 +18,8 @@ return [
     'user_cast'        => 'integer', // Eloquent cast: 'integer', 'string', or any cast type
 
     // Tracing options
-    'max_body_size'    => (int) env('REQUEST_TRACER_MAX_BODY_SIZE', 0), // 0 = unlimited
-    'retention_days'   => (int) env('REQUEST_TRACER_RETENTION_DAYS', 0), // 0 = forever
+    'max_body_size'              => (int) env('REQUEST_TRACER_MAX_BODY_SIZE', 0), // 0 = unlimited
+    'retention_days'             => (int) env('REQUEST_TRACER_RETENTION_DAYS', 0), // 0 = forever
     'exclude_body_content_types' => env('REQUEST_TRACER_EXCLUDE_BODY_CONTENT_TYPES', ''), // Comma-separated prefixes (e.g. 'image/,video/,application/pdf,application/octet-stream')
 
     // Masking options
