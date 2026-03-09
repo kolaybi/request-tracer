@@ -258,3 +258,47 @@ it('handles non-array non-string sensitive_keys config', function () {
 
     expect($decoded['Authorization'])->toBe(['Bearer token']);
 });
+
+// ──────────────────────────────────────────────────
+// Depth: shouldExcludeBody (content-type exclusion)
+// ──────────────────────────────────────────────────
+
+it('excludes body for matching content type prefix', function () {
+    config(['kolaybi.request-tracer.exclude_body_content_types' => 'image/,video/']);
+
+    expect(TraceHelper::shouldExcludeBody('image/png'))->toBeTrue()
+        ->and(TraceHelper::shouldExcludeBody('video/mp4'))->toBeTrue();
+});
+
+it('does not exclude body for non-matching content type', function () {
+    config(['kolaybi.request-tracer.exclude_body_content_types' => 'image/,video/']);
+
+    expect(TraceHelper::shouldExcludeBody('application/json'))->toBeFalse()
+        ->and(TraceHelper::shouldExcludeBody('text/html'))->toBeFalse();
+});
+
+it('handles content type with charset parameter', function () {
+    config(['kolaybi.request-tracer.exclude_body_content_types' => 'application/pdf']);
+
+    expect(TraceHelper::shouldExcludeBody('application/pdf; charset=utf-8'))->toBeTrue();
+});
+
+it('does not exclude body when config is empty', function () {
+    config(['kolaybi.request-tracer.exclude_body_content_types' => '']);
+
+    expect(TraceHelper::shouldExcludeBody('image/png'))->toBeFalse();
+});
+
+it('does not exclude body for null content type', function () {
+    config(['kolaybi.request-tracer.exclude_body_content_types' => 'image/']);
+
+    expect(TraceHelper::shouldExcludeBody(null))->toBeFalse();
+});
+
+it('accepts array config for exclude_body_content_types', function () {
+    config(['kolaybi.request-tracer.exclude_body_content_types' => ['image/', 'application/octet-stream']]);
+
+    expect(TraceHelper::shouldExcludeBody('image/jpeg'))->toBeTrue()
+        ->and(TraceHelper::shouldExcludeBody('application/octet-stream'))->toBeTrue()
+        ->and(TraceHelper::shouldExcludeBody('application/json'))->toBeFalse();
+});

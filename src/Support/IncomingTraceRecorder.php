@@ -22,6 +22,9 @@ class IncomingTraceRecorder
         $contextProvider = app(TraceContextProvider::class);
         $tenantColumn = config('kolaybi.request-tracer.tenant_column', 'tenant_id');
 
+        $excludeRequestBody = TraceHelper::shouldExcludeBody($request->headers->get('Content-Type'));
+        $excludeResponseBody = TraceHelper::shouldExcludeBody($response->headers->get('Content-Type'));
+
         $attributes = [
             $tenantColumn       => $contextProvider->tenantId(),
             'user_id'           => $contextProvider->userId(),
@@ -33,14 +36,14 @@ class IncomingTraceRecorder
             'path'              => $request->path(),
             'query'             => $request->getQueryString(),
             'route'             => $request->route()?->uri(),
-            'request_body'      => TraceHelper::normalizeBody($request->getContent()),
+            'request_body'      => $excludeRequestBody ? null : TraceHelper::normalizeBody($request->getContent()),
             'request_headers'   => TraceHelper::normalizeHeaders($request->headers->all()),
             'request_size'      => strlen($request->getContent()),
             'start'             => $start,
             'end'               => $end,
             'status'            => $response->getStatusCode(),
             'response_headers'  => TraceHelper::normalizeHeaders($response->headers->all()),
-            'response_body'     => $this->captureResponseBody($response),
+            'response_body'     => $excludeResponseBody ? null : $this->captureResponseBody($response),
             'response_size'     => $this->resolveResponseSize($response),
         ];
 

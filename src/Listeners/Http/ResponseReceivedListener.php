@@ -15,11 +15,20 @@ class ResponseReceivedListener extends AbstractTraceListener
         $response = $event->response;
         $traceAttributes = $this->extractTraceAttributes($request->attributes());
 
+        $requestHeaders = $request->headers();
+        $requestContentType = $requestHeaders['Content-Type'] ?? $requestHeaders['content-type'] ?? null;
+        if (is_array($requestContentType)) {
+            $requestContentType = $requestContentType[0] ?? null;
+        }
+        $responseContentType = $response->header('Content-Type');
+        $excludeRequestBody = TraceHelper::shouldExcludeBody($requestContentType);
+        $excludeResponseBody = TraceHelper::shouldExcludeBody($responseContentType);
+
         $attributes = array_merge(
             $this->buildTraceAttributes(
                 url: $request->url(),
                 method: $request->method(),
-                body: $request->body(),
+                body: $excludeRequestBody ? '' : $request->body(),
                 headers: $this->stripTraceHeaders($request->headers()),
                 channel: $this->extractTraceString($traceAttributes['channel'] ?? null),
                 extra: $traceAttributes['extra'] ?? null,
@@ -29,7 +38,7 @@ class ResponseReceivedListener extends AbstractTraceListener
                 'end'              => Timestamp::now(),
                 'protocol'         => parse_url($request->url(), PHP_URL_SCHEME) ?? 'http',
                 'status'           => $response->status(),
-                'response_body'    => TraceHelper::normalizeBody($response->body()),
+                'response_body'    => $excludeResponseBody ? null : TraceHelper::normalizeBody($response->body()),
                 'response_headers' => TraceHelper::normalizeHeaders($this->stripTraceHeaders($response->headers())),
                 'response_size'    => strlen($response->body()),
                 'stats'            => json_encode($response->handlerStats(), JSON_UNESCAPED_SLASHES),
