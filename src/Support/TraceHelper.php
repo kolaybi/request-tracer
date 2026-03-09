@@ -10,6 +10,7 @@ class TraceHelper
     public static function dispatchTrace(array $attributes, string $modelClass): void
     {
         $attributes['duration'] = self::calculateDuration($attributes['start'] ?? null, $attributes['end'] ?? null);
+        $attributes['is_slow'] = self::isSlow($attributes['duration']);
 
         StoreTraceJob::dispatch($attributes, $modelClass)
             ->onConnection(config('kolaybi.request-tracer.queue_connection'))
@@ -23,6 +24,13 @@ class TraceHelper
         }
 
         return max(0, (int) CarbonImmutable::parse($start)->diffInMilliseconds(CarbonImmutable::parse($end)));
+    }
+
+    public static function isSlow(?int $duration): bool
+    {
+        $threshold = (int) config('kolaybi.request-tracer.slow_threshold', 0);
+
+        return $threshold > 0 && null !== $duration && $duration >= $threshold;
     }
 
     public static function normalizeHeaders(array|string $headers): string

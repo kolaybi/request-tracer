@@ -36,6 +36,7 @@ class OutgoingRequestTrace extends Model
 
         return [
             'duration'      => 'integer',
+            'is_slow'       => 'boolean',
             'status'        => 'integer',
             'request_size'  => 'integer',
             'response_size' => 'integer',

@@ -302,3 +302,60 @@ it('accepts array config for exclude_body_content_types', function () {
         ->and(TraceHelper::shouldExcludeBody('application/octet-stream'))->toBeTrue()
         ->and(TraceHelper::shouldExcludeBody('application/json'))->toBeFalse();
 });
+
+// ──────────────────────────────────────────────────
+// Depth: isSlow (slow request tagging)
+// ──────────────────────────────────────────────────
+
+it('flags duration at or above threshold as slow', function () {
+    config(['kolaybi.request-tracer.slow_threshold' => 500]);
+
+    expect(TraceHelper::isSlow(500))->toBeTrue()
+        ->and(TraceHelper::isSlow(1000))->toBeTrue();
+});
+
+it('does not flag duration below threshold as slow', function () {
+    config(['kolaybi.request-tracer.slow_threshold' => 500]);
+
+    expect(TraceHelper::isSlow(499))->toBeFalse()
+        ->and(TraceHelper::isSlow(100))->toBeFalse();
+});
+
+it('does not flag as slow when threshold is 0 (disabled)', function () {
+    config(['kolaybi.request-tracer.slow_threshold' => 0]);
+
+    expect(TraceHelper::isSlow(10000))->toBeFalse();
+});
+
+it('does not flag null duration as slow', function () {
+    config(['kolaybi.request-tracer.slow_threshold' => 500]);
+
+    expect(TraceHelper::isSlow(null))->toBeFalse();
+});
+
+it('sets is_slow in dispatched trace attributes', function () {
+    config(['kolaybi.request-tracer.slow_threshold' => 500]);
+
+    TraceHelper::dispatchTrace(
+        ['host' => 'example.com', 'start' => '2026-01-01 00:00:00.000000', 'end' => '2026-01-01 00:00:01.000000'],
+        OutgoingRequestTrace::class,
+    );
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return true === $job->attributes['is_slow']
+            && 1000 === $job->attributes['duration'];
+    });
+});
+
+it('sets is_slow to false when under threshold', function () {
+    config(['kolaybi.request-tracer.slow_threshold' => 5000]);
+
+    TraceHelper::dispatchTrace(
+        ['host' => 'example.com', 'start' => '2026-01-01 00:00:00.000000', 'end' => '2026-01-01 00:00:01.000000'],
+        OutgoingRequestTrace::class,
+    );
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return false === $job->attributes['is_slow'];
+    });
+});
