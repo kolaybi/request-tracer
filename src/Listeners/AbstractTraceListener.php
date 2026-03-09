@@ -118,7 +118,7 @@ abstract class AbstractTraceListener
         );
     }
 
-    protected function extractSoapAction(string $action, string $request): string
+    protected function extractSoapAction(string $action, string $request): ?string
     {
         $extracted = Str::remove('http://tempuri.org/', $action);
 

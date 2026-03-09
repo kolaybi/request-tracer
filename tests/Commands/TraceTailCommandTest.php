@@ -2,6 +2,8 @@
 
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
@@ -130,4 +132,50 @@ it('uses custom interval from option', function () {
     $this->artisan('request-tracer:tail', ['--max-polls' => 1, '--interval' => 5])
         ->expectsOutputToContain('every 5s')
         ->assertExitCode(0);
+});
+
+it('handles high-volume pre-existing traces without rendering them', function () {
+    $connection = DB::connection('testing');
+    $now = now();
+
+    $outgoingRows = [];
+    $incomingRows = [];
+
+    for ($i = 0; $i < 1500; $i++) {
+        $outgoingRows[] = [
+            'id'         => (string) Str::ulid(),
+            'host'       => "bulk-out-{$i}.example.com",
+            'path'       => '/bulk',
+            'method'     => 'GET',
+            'status'     => 200,
+            'duration'   => 1,
+            'created_at' => $now,
+        ];
+
+        $incomingRows[] = [
+            'id'         => (string) Str::ulid(),
+            'host'       => "bulk-in-{$i}.test",
+            'path'       => '/bulk',
+            'method'     => 'GET',
+            'status'     => 200,
+            'duration'   => 1,
+            'created_at' => $now,
+        ];
+    }
+
+    foreach (array_chunk($outgoingRows, 100) as $chunk) {
+        $connection->table(config('kolaybi.request-tracer.outgoing.table'))->insert($chunk);
+    }
+
+    foreach (array_chunk($incomingRows, 100) as $chunk) {
+        $connection->table(config('kolaybi.request-tracer.incoming.table'))->insert($chunk);
+    }
+
+    Artisan::call('request-tracer:tail', ['--max-polls' => 1, '--interval' => 1]);
+    $output = Artisan::output();
+
+    expect($output)
+        ->toContain('Tailing traces every 1s')
+        ->not->toContain('bulk-out-0.example.com')
+        ->not->toContain('bulk-in-0.test');
 });

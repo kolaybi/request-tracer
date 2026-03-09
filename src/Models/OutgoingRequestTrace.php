@@ -35,6 +35,7 @@ class OutgoingRequestTrace extends Model
         $tenantColumn = config('kolaybi.request-tracer.tenant_column', 'tenant_id');
 
         return [
+            'created_at'    => 'datetime',
             'duration'      => 'integer',
             'status'        => 'integer',
             'request_size'  => 'integer',

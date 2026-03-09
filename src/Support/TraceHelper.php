@@ -28,7 +28,7 @@ class TraceHelper
     public static function normalizeHeaders(array|string $headers): string
     {
         if (self::shouldMaskSensitive()) {
-            $headers = self::maskHeaders($headers);
+            $headers = self::maskHeaders($headers, self::sensitiveKeys(), self::maskValue());
         }
 
         return is_array($headers)
@@ -48,7 +48,7 @@ class TraceHelper
             return $query;
         }
 
-        return http_build_query(self::maskArrayByKey($parsed));
+        return http_build_query(self::maskArrayByKey($parsed, self::sensitiveKeys(), self::maskValue()));
     }
 
     public static function normalizeBody(string $body): ?string
@@ -56,7 +56,7 @@ class TraceHelper
         $body = self::sanitizeBody($body);
 
         if (self::shouldMaskSensitive()) {
-            $body = self::maskBody($body);
+            $body = self::maskBody($body, self::sensitiveKeys(), self::maskValue());
         }
 
         return self::truncateBody($body);
@@ -124,7 +124,7 @@ class TraceHelper
         );
     }
 
-    private static function isSensitiveKey(int|string $key): bool
+    private static function isSensitiveKey(int|string $key, array $sensitiveKeys): bool
     {
         if (!is_string($key)) {
             return false;
@@ -132,17 +132,17 @@ class TraceHelper
 
         $normalized = str_replace('_', '-', strtolower(trim($key)));
 
-        return in_array($normalized, self::sensitiveKeys(), true);
+        return in_array($normalized, $sensitiveKeys, true);
     }
 
-    private static function maskHeaders(array|string $headers): array|string
+    private static function maskHeaders(array|string $headers, array $sensitiveKeys, string $maskValue): array|string
     {
         if (is_array($headers)) {
-            return self::maskArrayByKey($headers);
+            return self::maskArrayByKey($headers, $sensitiveKeys, $maskValue);
         }
 
         $lines = preg_split("/\r\n|\n|\r/", $headers) ?: [];
-        $maskValue = self::maskValue();
+        $eol = str_contains($headers, "\r\n") ? "\r\n" : "\n";
 
         foreach ($lines as $index => $line) {
             $parts = explode(':', $line, 2);
@@ -153,15 +153,15 @@ class TraceHelper
 
             $headerName = trim($parts[0]);
 
-            if (self::isSensitiveKey($headerName)) {
+            if (self::isSensitiveKey($headerName, $sensitiveKeys)) {
                 $lines[$index] = "{$headerName}: {$maskValue}";
             }
         }
 
-        return implode(PHP_EOL, $lines);
+        return implode($eol, $lines);
     }
 
-    private static function maskBody(string $body): string
+    private static function maskBody(string $body, array $sensitiveKeys, string $maskValue): string
     {
         if ('' === $body) {
             return $body;
@@ -170,7 +170,7 @@ class TraceHelper
         $decoded = json_decode($body, true);
 
         if (JSON_ERROR_NONE === json_last_error() && is_array($decoded)) {
-            $encoded = json_encode(self::maskArrayByKey($decoded), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $encoded = json_encode(self::maskArrayByKey($decoded, $sensitiveKeys, $maskValue), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
             return false === $encoded ? $body : $encoded;
         }
@@ -179,24 +179,24 @@ class TraceHelper
             parse_str(ltrim($body, '?'), $parsed);
 
             if (is_array($parsed) && [] !== $parsed) {
-                return http_build_query(self::maskArrayByKey($parsed));
+                return http_build_query(self::maskArrayByKey($parsed, $sensitiveKeys, $maskValue));
             }
         }
 
         return $body;
     }
 
-    private static function maskArrayByKey(array $values): array
+    private static function maskArrayByKey(array $values, array $sensitiveKeys, string $maskValue): array
     {
         foreach ($values as $key => $value) {
-            if (self::isSensitiveKey($key)) {
-                $values[$key] = self::maskValue();
+            if (self::isSensitiveKey($key, $sensitiveKeys)) {
+                $values[$key] = $maskValue;
 
                 continue;
             }
 
             if (is_array($value)) {
-                $values[$key] = self::maskArrayByKey($value);
+                $values[$key] = self::maskArrayByKey($value, $sensitiveKeys, $maskValue);
             }
         }
 

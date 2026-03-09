@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Database\Connection;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -134,4 +135,20 @@ it('does not drop archives when retention is not configured', function () {
 
     // Archive should still exist
     expect($connection->selectOne("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", [$oldArchive]))->not->toBeNull();
+});
+
+it('warns and skips when database driver is unsupported', function () {
+    config(['kolaybi.request-tracer.retention_days' => 0]);
+
+    $mockConnection = Mockery::mock(Connection::class);
+    $mockConnection->shouldReceive('getDriverName')->twice()->andReturn('sqlsrv');
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->with(config('kolaybi.request-tracer.connection'))
+        ->andReturn($mockConnection);
+
+    $this->artisan('request-tracer:rotate')
+        ->expectsOutputToContain('Unsupported database driver [sqlsrv] for rotate command.')
+        ->assertExitCode(0);
 });

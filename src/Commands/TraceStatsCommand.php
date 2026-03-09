@@ -49,7 +49,7 @@ class TraceStatsCommand extends Command
             return;
         }
 
-        $stats = $query
+        $stats = (clone $query)
             ->toBase()
             ->selectRaw(
                 'COUNT(*) as total,

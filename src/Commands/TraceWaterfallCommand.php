@@ -58,7 +58,7 @@ class TraceWaterfallCommand extends Command
 
         $totalDuration = '—';
         if ($firstStart && $lastEnd) {
-            $ms = (int) Carbon::parse($firstStart)->diffInMilliseconds(Carbon::parse($lastEnd));
+            $ms = max(0, (int) Carbon::parse($firstStart)->diffInMilliseconds(Carbon::parse($lastEnd)));
             $totalDuration = "{$ms}ms";
         }
 

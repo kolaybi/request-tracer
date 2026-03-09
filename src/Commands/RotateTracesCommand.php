@@ -43,6 +43,15 @@ class RotateTracesCommand extends Command
 
     private function rotateTable(Connection $connection, string $baseTable, ?string $schema): void
     {
+        $driver = $connection->getDriverName();
+        $supportedDrivers = ['mysql', 'pgsql', 'sqlite'];
+
+        if (!in_array($driver, $supportedDrivers, true)) {
+            $this->warn("Unsupported database driver [{$driver}] for rotate command.");
+
+            return;
+        }
+
         $dateSuffix = now()->format('Ymd');
         $archiveTable = "{$baseTable}_{$dateSuffix}";
         $tempTable = "{$baseTable}_temp";
@@ -62,8 +71,6 @@ class RotateTracesCommand extends Command
 
             return;
         }
-
-        $driver = $connection->getDriverName();
 
         // Clean up temp table from a previously failed run
         $connection->statement("DROP TABLE IF EXISTS {$qualifiedTemp}");
@@ -98,12 +105,10 @@ class RotateTracesCommand extends Command
             );
             $connection->statement($tempSql);
 
-            $connection->statement("ALTER TABLE {$qualifiedBase} RENAME TO {$qualifiedArchive}");
-            $connection->statement("ALTER TABLE {$qualifiedTemp} RENAME TO {$qualifiedBase}");
-        } else {
-            $this->warn("Unsupported database driver [{$driver}] for rotate command.");
-
-            return;
+            $connection->transaction(function () use ($connection, $qualifiedBase, $qualifiedTemp, $qualifiedArchive) {
+                $connection->statement("ALTER TABLE {$qualifiedBase} RENAME TO {$qualifiedArchive}");
+                $connection->statement("ALTER TABLE {$qualifiedTemp} RENAME TO {$qualifiedBase}");
+            });
         }
 
         $this->info("Rotated [{$baseTable}] → [{$archiveTable}]");
