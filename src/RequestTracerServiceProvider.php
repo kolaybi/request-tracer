@@ -13,6 +13,7 @@ use KolayBi\RequestTracer\Commands\RotateTracesCommand;
 use KolayBi\RequestTracer\Commands\TraceInspectCommand;
 use KolayBi\RequestTracer\Commands\TraceSearchCommand;
 use KolayBi\RequestTracer\Commands\TraceStatsCommand;
+use KolayBi\RequestTracer\Commands\TraceTailCommand;
 use KolayBi\RequestTracer\Commands\TraceWaterfallCommand;
 use KolayBi\RequestTracer\Contracts\NullContextProvider;
 use KolayBi\RequestTracer\Contracts\TraceContextProvider;
@@ -71,6 +72,7 @@ class RequestTracerServiceProvider extends ServiceProvider
                 TraceInspectCommand::class,
                 TraceSearchCommand::class,
                 TraceStatsCommand::class,
+                TraceTailCommand::class,
                 TraceWaterfallCommand::class,
             ]);
         }
