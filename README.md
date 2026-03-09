@@ -167,6 +167,8 @@ REQUEST_TRACER_INCOMING_ENABLED=true
 
 The middleware records every incoming request with method, path, route, status, timing, headers, and optionally the response body.
 
+> **Note:** `response_size` is always recorded regardless of the `capture_response_body` setting. It is measured independently from the Symfony Response object, so you can monitor response sizes without the storage cost of capturing full response bodies.
+
 ## Debugging
 
 Display a chronological waterfall of all traces linked to a `trace_id`:
@@ -226,7 +228,24 @@ The command searches both incoming and outgoing tables automatically — no need
 
 ## Data Retention
 
-Purge old traces with the artisan command:
+### Table Rotation (recommended)
+
+Rotate trace tables daily — the current table is atomically swapped with a fresh empty one, and the old data moves to a dated archive table (e.g. `outgoing_request_traces_20260309`). Archives older than `retention_days` are dropped automatically.
+
+```bash
+php artisan request-tracer:rotate
+php artisan request-tracer:rotate --days=30
+```
+
+Schedule it to run daily:
+
+```php
+$schedule->command('request-tracer:rotate')->daily();
+```
+
+### Row-level Purge
+
+Alternatively, delete old rows from the current table in chunks:
 
 ```bash
 php artisan request-tracer:purge --days=30
