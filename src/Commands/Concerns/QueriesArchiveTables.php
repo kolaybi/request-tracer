@@ -101,14 +101,15 @@ trait QueriesArchiveTables
             );
 
             $tables = array_map(fn($row) => $row->tablename, $rows);
-        } else {
-            // SQLite
+        } elseif ('sqlite' === $driver) {
             $rows = $connection->select(
                 "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE ?",
                 [$pattern],
             );
 
             $tables = array_map(fn($row) => $row->name, $rows);
+        } else {
+            $tables = [];
         }
 
         // Only return tables matching the date suffix pattern
