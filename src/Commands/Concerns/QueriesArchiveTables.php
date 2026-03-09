@@ -114,9 +114,11 @@ trait QueriesArchiveTables
         // Only return tables matching the date suffix pattern
         $prefixLength = strlen($baseTable) + 1;
 
-        return array_values(array_filter(
-            $tables,
-            fn(string $table) => preg_match('/^\d{8}$/', substr($table, $prefixLength)),
-        ));
+        return array_values(
+            array_filter(
+                $tables,
+                fn(string $table) => preg_match('/^\d{8}$/', substr($table, $prefixLength)),
+            ),
+        );
     }
 }

@@ -11,6 +11,7 @@ use Illuminate\Support\ServiceProvider;
 use KolayBi\RequestTracer\Commands\PurgeTracesCommand;
 use KolayBi\RequestTracer\Commands\RotateTracesCommand;
 use KolayBi\RequestTracer\Commands\TraceInspectCommand;
+use KolayBi\RequestTracer\Commands\TraceSearchCommand;
 use KolayBi\RequestTracer\Commands\TraceStatsCommand;
 use KolayBi\RequestTracer\Commands\TraceWaterfallCommand;
 use KolayBi\RequestTracer\Contracts\NullContextProvider;
@@ -68,6 +69,7 @@ class RequestTracerServiceProvider extends ServiceProvider
                 PurgeTracesCommand::class,
                 RotateTracesCommand::class,
                 TraceInspectCommand::class,
+                TraceSearchCommand::class,
                 TraceStatsCommand::class,
                 TraceWaterfallCommand::class,
             ]);
