@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.4.0](https://github.com/kolaybi/request-tracer/compare/v1.3.0...v1.4.0) (2026-03-10)
+
+### Added
+- `channel` support for incoming traces — resolved from a configurable request header (`incoming.channel_header`) or middleware parameter, with header taking priority
+
 ## [v1.3.0](https://github.com/kolaybi/request-tracer/compare/v1.2.0...v1.3.0) (2026-03-10)
 
 ### Added
