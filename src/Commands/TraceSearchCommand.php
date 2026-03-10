@@ -19,7 +19,7 @@ class TraceSearchCommand extends Command
         {--status= : Filter by status code (e.g. 500, 4xx, 5xx)}
         {--method= : Filter by HTTP method}
         {--path= : Filter by path (supports * wildcards)}
-        {--channel= : Filter by channel (outgoing only)}
+        {--channel= : Filter by channel}
         {--from= : Filter traces after this date/time}
         {--to= : Filter traces before this date/time}
         {--min-duration= : Minimum duration in ms}
@@ -91,9 +91,7 @@ class TraceSearchCommand extends Command
         }
 
         if ($channel = $this->option('channel')) {
-            if ('outgoing' === $direction) {
-                $query->where('channel', $channel);
-            }
+            $query->where('channel', $channel);
         }
 
         if ($from = $this->option('from')) {
@@ -149,7 +147,7 @@ class TraceSearchCommand extends Command
             Str::limit($this->buildEndpoint($trace, $type), 60),
             $trace->status ?? '—',
             null !== $trace->duration ? "{$trace->duration}ms" : '—',
-            'OUTGOING' === $type ? ($trace->channel ?? '—') : '—',
+            $trace->channel ?? '—',
             $trace->created_at ?? '—',
         ];
     }

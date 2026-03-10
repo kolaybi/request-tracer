@@ -52,5 +52,6 @@ return [
         'only'                  => env('REQUEST_TRACER_INCOMING_ONLY', ''), // Comma-separated paths (supports wildcards: 'api/orders*')
         'except'                => env('REQUEST_TRACER_INCOMING_EXCEPT', ''), // Comma-separated paths (supports wildcards: 'health*,telescope*')
         'capture_response_body' => (bool) env('REQUEST_TRACER_INCOMING_CAPTURE_RESPONSE', false),
+        'channel_header'        => env('REQUEST_TRACER_INCOMING_CHANNEL_HEADER'), // Header name to read channel from (e.g. 'Channel')
     ],
 ];

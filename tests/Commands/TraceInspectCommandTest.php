@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
@@ -219,4 +220,21 @@ it('shows full output with --full flag', function () {
         ->expectsOutputToContain('Something went wrong')
         ->expectsOutputToContain('SomeException')
         ->assertExitCode(0);
+});
+
+it('shows channel for incoming traces', function () {
+    $trace = IncomingRequestTrace::create([
+        'host'    => 'myapp.test',
+        'path'    => '/api/test',
+        'method'  => 'GET',
+        'status'  => 200,
+        'channel' => 'mobile',
+    ]);
+
+    Artisan::call('request-tracer:inspect', ['id' => $trace->id]);
+    $output = Artisan::output();
+
+    expect($output)
+        ->toContain('Channel')
+        ->toContain('mobile');
 });

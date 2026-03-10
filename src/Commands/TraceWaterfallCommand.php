@@ -89,7 +89,7 @@ class TraceWaterfallCommand extends Command
             $this->buildEndpoint($trace, $type),
             $trace->status ?? '—',
             null !== $trace->duration ? "{$trace->duration}ms" : '—',
-            'OUTGOING' === $type ? ($trace->channel ?? '—') : '—',
+            $trace->channel ?? '—',
             $trace->server_identifier ?? '—',
             $trace->start ?? '—',
         ];

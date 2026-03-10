@@ -64,9 +64,9 @@ class TraceInspectCommand extends Command
         $this->components->twoColumnDetail('<fg=gray>Duration</>', null !== $trace->duration ? "{$trace->duration}ms" : '—');
         $this->components->twoColumnDetail('<fg=gray>Start</>', $trace->start ?? '—');
         $this->components->twoColumnDetail('<fg=gray>End</>', $trace->end ?? '—');
+        $this->components->twoColumnDetail('<fg=gray>Channel</>', $trace->channel ?? '—');
 
         if ('OUTGOING' === $type) {
-            $this->components->twoColumnDetail('<fg=gray>Channel</>', $trace->channel ?? '—');
             $this->components->twoColumnDetail('<fg=gray>Protocol</>', $trace->protocol ?? '—');
         }
 

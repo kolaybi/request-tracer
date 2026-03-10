@@ -192,7 +192,7 @@ it('shows dash for null duration stats', function () {
         ->toContain('—'); // null duration renders as em-dash
 });
 
-it('does not show channels section for incoming traces', function () {
+it('does not show channels section when no incoming traces have channels', function () {
     createIncoming();
 
     Artisan::call('request-tracer:stats', ['--type' => 'incoming']);
@@ -201,4 +201,18 @@ it('does not show channels section for incoming traces', function () {
     expect($output)
         ->toContain('Incoming')
         ->not->toContain('Top Channels');
+});
+
+it('shows top channels for incoming traces', function () {
+    createIncoming(['channel' => 'mobile']);
+    createIncoming(['channel' => 'mobile']);
+    createIncoming(['channel' => 'web']);
+
+    Artisan::call('request-tracer:stats', ['--type' => 'incoming']);
+    $output = Artisan::output();
+
+    expect($output)
+        ->toContain('Top Channels')
+        ->toContain('mobile')
+        ->toContain('web');
 });

@@ -205,3 +205,23 @@ it('combines multiple filters', function () {
 
     expect($output)->toMatch('/Results\s*\.+\s*1\b/');
 });
+
+it('filters by channel for incoming traces', function () {
+    seedIncoming(['channel' => 'mobile']);
+    seedIncoming(['channel' => 'web']);
+
+    Artisan::call('request-tracer:search', ['--channel' => 'mobile', '--type' => 'incoming']);
+    $output = Artisan::output();
+
+    expect($output)->toContain('mobile')
+        ->and($output)->toMatch('/Results\s*\.+\s*1\b/');
+});
+
+it('shows channel column for incoming traces in search results', function () {
+    seedIncoming(['channel' => 'jet']);
+
+    Artisan::call('request-tracer:search', ['--type' => 'incoming']);
+    $output = Artisan::output();
+
+    expect($output)->toContain('jet');
+});

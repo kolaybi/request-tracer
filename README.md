@@ -66,6 +66,7 @@ return [
         'only'                  => env('REQUEST_TRACER_INCOMING_ONLY', ''), // Comma-separated paths (supports wildcards: 'api/orders*')
         'except'                => env('REQUEST_TRACER_INCOMING_EXCEPT', ''), // Comma-separated paths (supports wildcards: 'health*,telescope*')
         'capture_response_body' => (bool) env('REQUEST_TRACER_INCOMING_CAPTURE_RESPONSE', false),
+        'channel_header'        => env('REQUEST_TRACER_INCOMING_CHANNEL_HEADER'), // Header name to read channel from (e.g. 'Channel')
     ],
 ];
 ```
@@ -84,6 +85,17 @@ use KolayBi\RequestTracer\Middleware\RequestTracerMiddleware;
 ->withMiddleware(function (Middleware $middleware) {
     $middleware->prepend(RequestTracerMiddleware::class);
 })
+```
+
+The middleware accepts an optional channel parameter to tag incoming traces by route group:
+
+```php
+// Per route group — channel set via middleware parameter
+Route::middleware([RequestTracerMiddleware::class.':web'])->group(...)
+Route::middleware([RequestTracerMiddleware::class.':mobile'])->group(...)
+
+// Channel from request header — set incoming.channel_header in config
+// Header value takes priority over middleware parameter
 ```
 
 ## Context Provider

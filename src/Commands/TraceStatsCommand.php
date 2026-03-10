@@ -91,23 +91,21 @@ class TraceStatsCommand extends Command
             }
         }
 
-        // Top channels (outgoing only)
-        if ('Outgoing' === $label) {
-            $topChannels = (clone $query)->toBase()
-                ->selectRaw('channel, COUNT(*) as cnt')
-                ->whereNotNull('channel')
-                ->groupBy('channel')
-                ->orderByDesc('cnt')
-                ->limit(5)
-                ->get();
+        // Top channels
+        $topChannels = (clone $query)->toBase()
+            ->selectRaw('channel, COUNT(*) as cnt')
+            ->whereNotNull('channel')
+            ->groupBy('channel')
+            ->orderByDesc('cnt')
+            ->limit(5)
+            ->get();
 
-            if ($topChannels->isNotEmpty()) {
-                $this->newLine();
-                $this->components->twoColumnDetail('  <fg=gray>Top Channels</>');
+        if ($topChannels->isNotEmpty()) {
+            $this->newLine();
+            $this->components->twoColumnDetail('  <fg=gray>Top Channels</>');
 
-                foreach ($topChannels as $row) {
-                    $this->components->twoColumnDetail("    {$row->channel}", number_format($row->cnt));
-                }
+            foreach ($topChannels as $row) {
+                $this->components->twoColumnDetail("    {$row->channel}", number_format($row->cnt));
             }
         }
 

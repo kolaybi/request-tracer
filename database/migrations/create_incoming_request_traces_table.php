@@ -21,6 +21,7 @@ return new class () extends Migration {
                 $table->ipAddress('client_ip')->nullable();
                 $table->string('server_identifier', 255)->nullable();
                 $table->string('trace_id')->nullable()->index();
+                $table->string('channel')->nullable()->index();
                 $table->string('method', 10)->nullable();
                 $table->text('host')->nullable();
                 $table->text('path')->nullable();

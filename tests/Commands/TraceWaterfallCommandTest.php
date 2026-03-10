@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
@@ -220,4 +221,25 @@ it('sorts traces chronologically across mixed types', function () {
         ->expectsOutputToContain('INCOMING')
         ->expectsOutputToContain('OUTGOING')
         ->assertExitCode(0);
+});
+
+it('shows channel for incoming traces in waterfall', function () {
+    $traceId = 'test-trace-wf-channel';
+
+    IncomingRequestTrace::create([
+        'trace_id' => $traceId,
+        'host'     => 'myapp.test',
+        'path'     => '/api/test',
+        'method'   => 'GET',
+        'status'   => 200,
+        'channel'  => 'mobile',
+        'start'    => '2026-01-01 00:00:00.000',
+        'end'      => '2026-01-01 00:00:00.100',
+        'duration' => 100,
+    ]);
+
+    Artisan::call('request-tracer:waterfall', ['trace_id' => $traceId]);
+    $output = Artisan::output();
+
+    expect($output)->toContain('mobile');
 });

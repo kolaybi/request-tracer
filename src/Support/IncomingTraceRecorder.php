@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class IncomingTraceRecorder
 {
-    public function record(Request $request, Response $response, string $start, string $end): void
+    public function record(Request $request, Response $response, string $start, string $end, ?string $channel = null): void
     {
         if (!$this->shouldSample() || !$this->shouldTraceRoute($request)) {
             return;
@@ -29,6 +29,7 @@ class IncomingTraceRecorder
             'client_ip'         => $request->ip(),
             'server_identifier' => $contextProvider->serverIdentifier(),
             'trace_id'          => Context::get('trace_id'),
+            'channel'           => $this->resolveChannel($request, $channel),
             'method'            => $request->method(),
             'host'              => $request->getHost(),
             'path'              => $request->path(),
@@ -98,6 +99,21 @@ class IncomingTraceRecorder
         $rate = config('kolaybi.request-tracer.incoming.sample_rate', 1.0);
 
         return $rate >= 1.0 || (mt_rand() / mt_getrandmax()) < $rate;
+    }
+
+    private function resolveChannel(Request $request, ?string $middlewareChannel): ?string
+    {
+        $headerName = config('kolaybi.request-tracer.incoming.channel_header');
+
+        if (null !== $headerName && '' !== $headerName) {
+            $headerValue = $request->header($headerName);
+
+            if (null !== $headerValue && '' !== $headerValue) {
+                return $headerValue;
+            }
+        }
+
+        return $middlewareChannel;
     }
 
     private function resolveResponseSize(Response $response): ?int

@@ -233,7 +233,7 @@ it('renders colorStatus and renderLine correctly for all status branches', funct
     );
     $renderLine->invoke($command, $trace, 'OUTGOING');
 
-    // Incoming trace (no channel shown even if set)
+    // Incoming trace (no channel)
     $inTrace = new IncomingRequestTrace(
         ['host' => 'g.test', 'path' => '/dashboard', 'method' => 'GET', 'status' => 200, 'duration' => 50, 'created_at' => now()],
     );
@@ -299,4 +299,23 @@ it('handles high-volume pre-existing traces without rendering them', function ()
         ->toContain('Tailing traces every 1s')
         ->not->toContain('bulk-out-0.example.com')
         ->not->toContain('bulk-in-0.test');
+});
+
+it('renders channel for incoming traces in tail output', function () {
+    $command = new TraceTailCommand();
+    $buffered = new BufferedOutput();
+    $input = new ArrayInput([]);
+    $command->setOutput(new OutputStyle($input, $buffered));
+
+    $renderLine = new ReflectionMethod($command, 'renderLine');
+
+    $trace = new IncomingRequestTrace([
+        'host'   => 'app.test', 'path' => '/api', 'method' => 'GET',
+        'status' => 200, 'duration' => 50, 'channel' => 'mobile', 'created_at' => now(),
+    ]);
+    $renderLine->invoke($command, $trace, 'INCOMING');
+
+    $output = $buffered->fetch();
+
+    expect($output)->toContain('mobile');
 });

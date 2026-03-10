@@ -81,3 +81,61 @@ it('generates unique trace_id for consecutive requests', function () {
         ->and($traceId2)->toBeString()->toHaveLength(26)
         ->and($traceId1)->not->toBe($traceId2);
 });
+
+it('passes middleware parameter channel to trace recorder', function () {
+    config(['kolaybi.request-tracer.incoming.enabled' => true]);
+
+    $middleware = new RequestTracerMiddleware();
+    $request = Request::create('/test', 'GET');
+
+    $middleware->handle($request, fn() => new Response('ok'), 'web');
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return 'web' === $job->attributes['channel'];
+    });
+});
+
+it('resolves channel from configured header', function () {
+    config([
+        'kolaybi.request-tracer.incoming.enabled'        => true,
+        'kolaybi.request-tracer.incoming.channel_header' => 'X-Channel',
+    ]);
+
+    $middleware = new RequestTracerMiddleware();
+    $request = Request::create('/test', 'GET', [], [], [], ['HTTP_X_CHANNEL' => 'mobile']);
+
+    $middleware->handle($request, fn() => new Response('ok'));
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return 'mobile' === $job->attributes['channel'];
+    });
+});
+
+it('header channel takes priority over middleware parameter', function () {
+    config([
+        'kolaybi.request-tracer.incoming.enabled'        => true,
+        'kolaybi.request-tracer.incoming.channel_header' => 'X-Channel',
+    ]);
+
+    $middleware = new RequestTracerMiddleware();
+    $request = Request::create('/test', 'GET', [], [], [], ['HTTP_X_CHANNEL' => 'partner-api']);
+
+    $middleware->handle($request, fn() => new Response('ok'), 'web');
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return 'partner-api' === $job->attributes['channel'];
+    });
+});
+
+it('channel is null when no header and no middleware parameter', function () {
+    config(['kolaybi.request-tracer.incoming.enabled' => true]);
+
+    $middleware = new RequestTracerMiddleware();
+    $request = Request::create('/test', 'GET');
+
+    $middleware->handle($request, fn() => new Response('ok'));
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        return null === $job->attributes['channel'];
+    });
+});

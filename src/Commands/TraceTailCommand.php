@@ -18,7 +18,7 @@ class TraceTailCommand extends Command
         {--type= : Filter by type (incoming or outgoing)}
         {--host= : Filter by host (supports * wildcards)}
         {--status= : Filter by status code (e.g. 500, 4xx, 5xx)}
-        {--channel= : Filter by channel (outgoing only)}
+        {--channel= : Filter by channel}
         {--interval=2 : Poll interval in seconds}
         {--max-polls= : Stop after N polls (for testing)}';
 
@@ -131,9 +131,7 @@ class TraceTailCommand extends Command
         }
 
         if ($channel = $this->option('channel')) {
-            if ('outgoing' === $direction) {
-                $query->where('channel', $channel);
-            }
+            $query->where('channel', $channel);
         }
 
         return $query;
@@ -146,7 +144,7 @@ class TraceTailCommand extends Command
         $method = str_pad($trace->method ?? '—', 7);
         $endpoint = Str::limit($this->buildEndpoint($trace, $type), 55);
         $duration = null !== $trace->duration ? "{$trace->duration}ms" : '—';
-        $channel = 'OUTGOING' === $type && $trace->channel ? " [{$trace->channel}]" : '';
+        $channel = $trace->channel ? " [{$trace->channel}]" : '';
 
         $this->line("[{$time}] {$status} {$method} {$endpoint} {$duration} <fg=gray>[{$type}]{$channel}</>");
     }

@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class RequestTracerMiddleware
 {
-    public function handle(Request $request, Closure $next): mixed
+    public function handle(Request $request, Closure $next, ?string $channel = null): mixed
     {
         Context::add('trace_id', (string) Str::ulid());
 
@@ -22,7 +22,7 @@ class RequestTracerMiddleware
         $response = $next($request);
 
         if (null !== $start && $response instanceof Response) {
-            new IncomingTraceRecorder()->record($request, $response, $start, Timestamp::now());
+            new IncomingTraceRecorder()->record($request, $response, $start, Timestamp::now(), $channel);
         }
 
         return $response;
