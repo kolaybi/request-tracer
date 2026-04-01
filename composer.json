@@ -13,7 +13,7 @@
     ],
     "require": {
         "php": "^8.4",
-        "laravel/framework": "^12.0"
+        "laravel/framework": "^12.0 || ^13.0"
     },
     "suggest": {
         "ext-soap": "Required for SOAP request tracing via TracingSoapClient",
