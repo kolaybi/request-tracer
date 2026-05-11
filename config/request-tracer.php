@@ -41,6 +41,7 @@ return [
         'sample_rate' => (float) env('REQUEST_TRACER_OUTGOING_SAMPLE_RATE', 1.0),
         'only'        => env('REQUEST_TRACER_OUTGOING_ONLY', ''), // Comma-separated host/path patterns (supports wildcards: 'api.example.com*')
         'except'      => env('REQUEST_TRACER_OUTGOING_EXCEPT', ''), // Comma-separated host/path patterns (supports wildcards: '*.internal.com*')
+        'persist'     => env('REQUEST_TRACER_OUTGOING_PERSIST', ''), // Comma-separated host/path patterns to preserve forever (same semantics as 'only')
     ],
 
     // Incoming request tracing
@@ -51,6 +52,7 @@ return [
         'sample_rate'           => (float) env('REQUEST_TRACER_INCOMING_SAMPLE_RATE', 1.0),
         'only'                  => env('REQUEST_TRACER_INCOMING_ONLY', ''), // Comma-separated paths (supports wildcards: 'api/orders*')
         'except'                => env('REQUEST_TRACER_INCOMING_EXCEPT', ''), // Comma-separated paths (supports wildcards: 'health*,telescope*')
+        'persist'               => env('REQUEST_TRACER_INCOMING_PERSIST', ''), // Comma-separated paths to preserve forever (same semantics as 'only')
         'capture_response_body' => (bool) env('REQUEST_TRACER_INCOMING_CAPTURE_RESPONSE', false),
         'channel_header'        => env('REQUEST_TRACER_INCOMING_CHANNEL_HEADER'), // Header name to read channel from (e.g. 'Channel')
     ],
