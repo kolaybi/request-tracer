@@ -38,7 +38,7 @@ class TraceSearchCommand extends Command
         if (!$type || 'outgoing' === $type) {
             $outgoingModel = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
             $results = $results->merge(
-                $this->buildQuery($outgoingModel::query(), 'outgoing')
+                $this->buildQuery($outgoingModel::query())
                     ->latest('created_at')
                     ->limit($limit)
                     ->get()
@@ -49,7 +49,7 @@ class TraceSearchCommand extends Command
         if (!$type || 'incoming' === $type) {
             $incomingModel = config('kolaybi.request-tracer.incoming.model', IncomingRequestTrace::class);
             $results = $results->merge(
-                $this->buildQuery($incomingModel::query(), 'incoming')
+                $this->buildQuery($incomingModel::query())
                     ->latest('created_at')
                     ->limit($limit)
                     ->get()
@@ -72,7 +72,7 @@ class TraceSearchCommand extends Command
         return self::SUCCESS;
     }
 
-    private function buildQuery(Builder $query, string $direction): Builder
+    private function buildQuery(Builder $query): Builder
     {
         if ($host = $this->option('host')) {
             $query->whereLike('host', $this->wildcardToLike($host));

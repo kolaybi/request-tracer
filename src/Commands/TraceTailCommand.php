@@ -60,10 +60,7 @@ class TraceTailCommand extends Command
 
             if (!$type || 'outgoing' === $type) {
                 $traces = $this
-                    ->applyFilters(
-                        $outgoingModel::where('created_at', '>=', $since),
-                        'outgoing',
-                    )
+                    ->applyFilters($outgoingModel::where('created_at', '>=', $since))
                     ->orderBy('created_at')
                     ->orderBy('id')
                     ->get();
@@ -79,10 +76,7 @@ class TraceTailCommand extends Command
 
             if (!$type || 'incoming' === $type) {
                 $traces = $this
-                    ->applyFilters(
-                        $incomingModel::where('created_at', '>=', $since),
-                        'incoming',
-                    )
+                    ->applyFilters($incomingModel::where('created_at', '>=', $since))
                     ->orderBy('created_at')
                     ->orderBy('id')
                     ->get();
@@ -115,7 +109,7 @@ class TraceTailCommand extends Command
         return self::SUCCESS;
     }
 
-    private function applyFilters(Builder $query, string $direction): Builder
+    private function applyFilters(Builder $query): Builder
     {
         if ($host = $this->option('host')) {
             $query->whereLike('host', str_replace('*', '%', $host));
