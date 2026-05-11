@@ -8,6 +8,7 @@ use Illuminate\Http\Client\Events\ResponseReceived as IlluminateResponseReceived
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
+use KolayBi\RequestTracer\Commands\PreserveTracesCommand;
 use KolayBi\RequestTracer\Commands\PurgeTracesCommand;
 use KolayBi\RequestTracer\Commands\RotateTracesCommand;
 use KolayBi\RequestTracer\Commands\TraceDiffCommand;
@@ -68,6 +69,7 @@ class RequestTracerServiceProvider extends ServiceProvider
 
         if ($this->app->runningInConsole()) {
             $this->commands([
+                PreserveTracesCommand::class,
                 PurgeTracesCommand::class,
                 RotateTracesCommand::class,
                 TraceDiffCommand::class,

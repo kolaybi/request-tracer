@@ -26,3 +26,7 @@ it('creates the outgoing persistent table during migration', function () {
         [$expected],
     ))->not->toBeNull();
 });
+
+it('registers the preserve command', function () {
+    $this->artisan('request-tracer:preserve')->assertExitCode(0);
+});
