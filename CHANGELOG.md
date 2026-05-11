@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.5.0](https://github.com/kolaybi/request-tracer/compare/v1.4.0...v1.5.0) (2026-05-11)
+
+### Added
+- `request-tracer:preserve` command — sweeps matching rows from dated archive tables into permanent `*_persistent` tables, surviving rotation and `retention_days`. Designed to run after `request-tracer:rotate` via `->then()`. Supports `--date=YYYYMMDD` for single-archive runs, `--all` for backfills, and `--direction=incoming|outgoing|both`.
+- `REQUEST_TRACER_INCOMING_PERSIST` env / `incoming.persist` config — comma-separated path glob patterns to preserve (same semantics as `incoming.only`).
+- `REQUEST_TRACER_OUTGOING_PERSIST` env / `outgoing.persist` config — comma-separated `host+path` glob patterns to preserve (same semantics as `outgoing.only`).
+- `incoming_request_traces_persistent` and `outgoing_request_traces_persistent` migrations.
+- `TraceTableBlueprint` helper — shared column definitions used by all trace-table migrations.
+
+### Changed
+- Existing trace-table migrations now use `TraceTableBlueprint` (schema unchanged).
+- Removed unused `$direction` parameter from `TraceTailCommand::applyFilters` and `TraceSearchCommand::buildQuery` — both methods only filter on `host`/`status`/`channel`/etc., never on direction.
+- Migrated test mocks from legacy `Mockery::shouldReceive()` to Mockery 1.5+ `allows()`/`expects()`. Facade `DB::shouldReceive(...)` calls remain — that is the Facade entry point.
+
 ## [v1.4.0](https://github.com/kolaybi/request-tracer/compare/v1.3.0...v1.4.0) (2026-03-10)
 
 ### Added
