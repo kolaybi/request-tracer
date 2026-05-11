@@ -179,3 +179,95 @@ it('is idempotent — re-running over the same archive does not duplicate', func
 
     expect($connection->table($persistent)->count())->toBe(1);
 });
+
+it('skips a direction silently when its persist config is empty', function () {
+    $live = config('kolaybi.request-tracer.incoming.table');
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    $connection = DB::connection('testing');
+    $connection->statement("CREATE TABLE {$archive} AS SELECT * FROM {$live} WHERE 0");
+    $connection->table($archive)->insert([
+        ['id' => '01JTEST00000000000EMPTY01', 'path' => 'qnb/reports', 'method' => 'GET'],
+    ]);
+
+    $this->artisan('request-tracer:preserve --direction=incoming')
+        ->expectsOutputToContain('Preserved 0 incoming row(s) (no patterns configured)')
+        ->assertExitCode(0);
+
+    expect($connection->table("{$live}_persistent")->count())->toBe(0);
+});
+
+it('warns and exits 0 when no archive exists for a direction', function () {
+    config(['kolaybi.request-tracer.incoming.persist' => 'qnb/*']);
+
+    $live = config('kolaybi.request-tracer.incoming.table');
+
+    $this->artisan('request-tracer:preserve --direction=incoming')
+        ->expectsOutputToContain("No archives found for [{$live}]")
+        ->assertExitCode(0);
+});
+
+it('warns and exits 0 when --date targets a non-existent archive', function () {
+    config(['kolaybi.request-tracer.incoming.persist' => 'qnb/*']);
+
+    $live = config('kolaybi.request-tracer.incoming.table');
+
+    $this->artisan('request-tracer:preserve --direction=incoming --date=20200101')
+        ->expectsOutputToContain("No archives found for [{$live}]")
+        ->assertExitCode(0);
+});
+
+it('warns and exits 0 when the persistent table does not exist', function () {
+    config(['kolaybi.request-tracer.incoming.persist' => 'qnb/*']);
+
+    $live = config('kolaybi.request-tracer.incoming.table');
+    $persistent = "{$live}_persistent";
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    $connection = DB::connection('testing');
+    $connection->statement("CREATE TABLE {$archive} AS SELECT * FROM {$live} WHERE 0");
+    $connection->statement("DROP TABLE {$persistent}");
+
+    $this->artisan('request-tracer:preserve --direction=incoming')
+        ->expectsOutputToContain("Persistent table [{$persistent}] does not exist")
+        ->assertExitCode(0);
+});
+
+it('warns and exits 0 on unsupported database driver', function () {
+    $mockConnection = Mockery::mock(\Illuminate\Database\Connection::class);
+    $mockConnection->shouldReceive('getDriverName')->andReturn('sqlsrv');
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->with(config('kolaybi.request-tracer.connection'))
+        ->andReturn($mockConnection);
+
+    $this->artisan('request-tracer:preserve')
+        ->expectsOutputToContain('Unsupported database driver [sqlsrv] for preserve command.')
+        ->assertExitCode(0);
+});
+
+it('escapes literal % and _ in patterns', function () {
+    $live = config('kolaybi.request-tracer.incoming.table');
+    $persistent = "{$live}_persistent";
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    config(['kolaybi.request-tracer.incoming.persist' => 'a%b']);
+
+    $connection = DB::connection('testing');
+    $connection->statement("CREATE TABLE {$archive} AS SELECT * FROM {$live} WHERE 0");
+    $connection->table($archive)->insert([
+        ['id' => '01JTEST00000000000ESC00001', 'path' => 'a%b',   'method' => 'GET'],
+        ['id' => '01JTEST00000000000ESC00002', 'path' => 'axb',   'method' => 'GET'],
+        ['id' => '01JTEST00000000000ESC00003', 'path' => 'axyzb', 'method' => 'GET'],
+    ]);
+
+    $this->artisan('request-tracer:preserve --direction=incoming')->assertExitCode(0);
+
+    expect($connection->table($persistent)->where('path', 'a%b')->count())->toBe(1)
+        ->and($connection->table($persistent)->where('path', 'axb')->count())->toBe(0)
+        ->and($connection->table($persistent)->where('path', 'axyzb')->count())->toBe(0);
+});
