@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Database\Connection;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 
@@ -69,8 +70,8 @@ it('preserves matching outgoing rows using trimmed host+path', function () {
     $connection->statement("CREATE TABLE {$archive} AS SELECT * FROM {$live} WHERE 0");
     $connection->table($archive)->insert([
         ['id' => '01JTEST000000000000OUT001', 'host' => 'api.qnbefinans.com', 'path' => '/v1/invoices', 'method' => 'POST'],
-        ['id' => '01JTEST000000000000OUT002', 'host' => 'api.example.com',    'path' => '/qnb/relay',   'method' => 'POST'],
-        ['id' => '01JTEST000000000000OUT003', 'host' => 'api.example.com',    'path' => '/other',       'method' => 'POST'],
+        ['id' => '01JTEST000000000000OUT002', 'host' => 'api.example.com', 'path' => '/qnb/relay', 'method' => 'POST'],
+        ['id' => '01JTEST000000000000OUT003', 'host' => 'api.example.com', 'path' => '/other', 'method' => 'POST'],
     ]);
 
     $this->artisan('request-tracer:preserve --direction=outgoing')
@@ -236,8 +237,8 @@ it('warns and exits 0 when the persistent table does not exist', function () {
 });
 
 it('warns and exits 0 on unsupported database driver', function () {
-    $mockConnection = Mockery::mock(\Illuminate\Database\Connection::class);
-    $mockConnection->shouldReceive('getDriverName')->andReturn('sqlsrv');
+    $mockConnection = Mockery::mock(Connection::class);
+    $mockConnection->allows('getDriverName')->andReturn('sqlsrv');
 
     DB::shouldReceive('connection')
         ->once()
@@ -257,12 +258,12 @@ it('uses INSERT IGNORE on MySQL', function () {
     $dateSuffix = now()->format('Ymd');
     $archive = "{$live}_{$dateSuffix}";
 
-    $mockConnection = Mockery::mock(\Illuminate\Database\Connection::class);
-    $mockConnection->shouldReceive('getDriverName')->andReturn('mysql');
-    $mockConnection->shouldReceive('getDatabaseName')->andReturn('test_db');
+    $mockConnection = Mockery::mock(Connection::class);
+    $mockConnection->allows('getDriverName')->andReturn('mysql');
+    $mockConnection->allows('getDatabaseName')->andReturn('test_db');
 
     // tableExists for persistent table — exists.
-    $mockConnection->shouldReceive('selectOne')
+    $mockConnection->allows('selectOne')
         ->with(
             'SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1',
             Mockery::on(fn($args) => $args[1] === $persistent),
@@ -270,19 +271,18 @@ it('uses INSERT IGNORE on MySQL', function () {
         ->andReturn((object) ['1' => 1]);
 
     // discoverArchiveTables returns one archive.
-    $mockConnection->shouldReceive('select')
+    $mockConnection->allows('select')
         ->with(
             'SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name LIKE ?',
             Mockery::on(fn($args) => $args[1] === "{$live}_%"),
         )
         ->andReturn([(object) ['table_name' => $archive]]);
 
-    $mockConnection->shouldReceive('affectingStatement')
+    $mockConnection->expects('affectingStatement')
         ->with(
             Mockery::pattern('/INSERT IGNORE INTO ' . preg_quote($persistent, '/') . ' SELECT \* FROM ' . preg_quote($archive, '/') . ' WHERE path LIKE \? ESCAPE/'),
             ['qnb/%'],
         )
-        ->once()
         ->andReturn(3);
 
     DB::shouldReceive('connection')
@@ -303,29 +303,28 @@ it('uses ON CONFLICT DO NOTHING on PostgreSQL', function () {
     $dateSuffix = now()->format('Ymd');
     $archive = "{$live}_{$dateSuffix}";
 
-    $mockConnection = Mockery::mock(\Illuminate\Database\Connection::class);
-    $mockConnection->shouldReceive('getDriverName')->andReturn('pgsql');
+    $mockConnection = Mockery::mock(Connection::class);
+    $mockConnection->allows('getDriverName')->andReturn('pgsql');
 
-    $mockConnection->shouldReceive('selectOne')
+    $mockConnection->allows('selectOne')
         ->with(
             'SELECT 1 FROM pg_tables WHERE schemaname = ? AND tablename = ? LIMIT 1',
             Mockery::on(fn($args) => $args[1] === $persistent),
         )
         ->andReturn((object) ['1' => 1]);
 
-    $mockConnection->shouldReceive('select')
+    $mockConnection->allows('select')
         ->with(
             'SELECT tablename FROM pg_tables WHERE schemaname = ? AND tablename LIKE ?',
             Mockery::on(fn($args) => $args[1] === "{$live}_%"),
         )
         ->andReturn([(object) ['tablename' => $archive]]);
 
-    $mockConnection->shouldReceive('affectingStatement')
+    $mockConnection->expects('affectingStatement')
         ->with(
             Mockery::pattern('/INSERT INTO ' . preg_quote($persistent, '/') . ' SELECT \* FROM ' . preg_quote($archive, '/') . ' WHERE path LIKE \? ESCAPE .+ ON CONFLICT \(id\) DO NOTHING/'),
             ['qnb/%'],
         )
-        ->once()
         ->andReturn(2);
 
     DB::shouldReceive('connection')
@@ -387,30 +386,29 @@ it('uses CONCAT+IFNULL outgoing match on MySQL', function () {
     $dateSuffix = now()->format('Ymd');
     $archive = "{$live}_{$dateSuffix}";
 
-    $mockConnection = Mockery::mock(\Illuminate\Database\Connection::class);
-    $mockConnection->shouldReceive('getDriverName')->andReturn('mysql');
-    $mockConnection->shouldReceive('getDatabaseName')->andReturn('test_db');
+    $mockConnection = Mockery::mock(Connection::class);
+    $mockConnection->allows('getDriverName')->andReturn('mysql');
+    $mockConnection->allows('getDatabaseName')->andReturn('test_db');
 
-    $mockConnection->shouldReceive('selectOne')
+    $mockConnection->allows('selectOne')
         ->with(
             'SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1',
             Mockery::on(fn($args) => $args[1] === $persistent),
         )
         ->andReturn((object) ['1' => 1]);
 
-    $mockConnection->shouldReceive('select')
+    $mockConnection->allows('select')
         ->with(
             'SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name LIKE ?',
             Mockery::any(),
         )
         ->andReturn([(object) ['table_name' => $archive]]);
 
-    $mockConnection->shouldReceive('affectingStatement')
+    $mockConnection->expects('affectingStatement')
         ->with(
-            Mockery::pattern("/TRIM\(BOTH '\/' FROM CONCAT\(IFNULL\(host, ''\), IFNULL\(path, ''\)\)\) LIKE \?/"),
+            Mockery::pattern("/TRIM\\(BOTH '\\/' FROM CONCAT\\(IFNULL\\(host, ''\\), IFNULL\\(path, ''\\)\\)\\) LIKE \\?/"),
             ['%qnb%'],
         )
-        ->once()
         ->andReturn(1);
 
     DB::shouldReceive('connection')
@@ -430,29 +428,28 @@ it('uses COALESCE outgoing match on PostgreSQL', function () {
     $dateSuffix = now()->format('Ymd');
     $archive = "{$live}_{$dateSuffix}";
 
-    $mockConnection = Mockery::mock(\Illuminate\Database\Connection::class);
-    $mockConnection->shouldReceive('getDriverName')->andReturn('pgsql');
+    $mockConnection = Mockery::mock(Connection::class);
+    $mockConnection->allows('getDriverName')->andReturn('pgsql');
 
-    $mockConnection->shouldReceive('selectOne')
+    $mockConnection->allows('selectOne')
         ->with(
             'SELECT 1 FROM pg_tables WHERE schemaname = ? AND tablename = ? LIMIT 1',
             Mockery::on(fn($args) => $args[1] === $persistent),
         )
         ->andReturn((object) ['1' => 1]);
 
-    $mockConnection->shouldReceive('select')
+    $mockConnection->allows('select')
         ->with(
             'SELECT tablename FROM pg_tables WHERE schemaname = ? AND tablename LIKE ?',
             Mockery::any(),
         )
         ->andReturn([(object) ['tablename' => $archive]]);
 
-    $mockConnection->shouldReceive('affectingStatement')
+    $mockConnection->expects('affectingStatement')
         ->with(
-            Mockery::pattern("/TRIM\(BOTH '\/' FROM \(COALESCE\(host, ''\) \|\| COALESCE\(path, ''\)\)\) LIKE \?/"),
+            Mockery::pattern("/TRIM\\(BOTH '\\/' FROM \\(COALESCE\\(host, ''\\) \\|\\| COALESCE\\(path, ''\\)\\)\\) LIKE \\?/"),
             ['%qnb%'],
         )
-        ->once()
         ->andReturn(1);
 
     DB::shouldReceive('connection')
@@ -475,8 +472,8 @@ it('escapes literal % and _ in patterns', function () {
     $connection = DB::connection('testing');
     $connection->statement("CREATE TABLE {$archive} AS SELECT * FROM {$live} WHERE 0");
     $connection->table($archive)->insert([
-        ['id' => '01JTEST00000000000ESC00001', 'path' => 'a%b',   'method' => 'GET'],
-        ['id' => '01JTEST00000000000ESC00002', 'path' => 'axb',   'method' => 'GET'],
+        ['id' => '01JTEST00000000000ESC00001', 'path' => 'a%b', 'method' => 'GET'],
+        ['id' => '01JTEST00000000000ESC00002', 'path' => 'axb', 'method' => 'GET'],
         ['id' => '01JTEST00000000000ESC00003', 'path' => 'axyzb', 'method' => 'GET'],
     ]);
 

@@ -40,7 +40,7 @@ class PreserveTracesCommand extends Command
             default    => null,
         };
 
-        if ($directions === null) {
+        if (null === $directions) {
             $this->error("Invalid --direction value [{$direction}]. Expected: incoming|outgoing|both.");
 
             return self::FAILURE;
@@ -59,7 +59,7 @@ class PreserveTracesCommand extends Command
         $liveTable = config("kolaybi.request-tracer.{$direction}.table");
         $persistentTable = "{$liveTable}_persistent";
 
-        if ($patterns === []) {
+        if ([] === $patterns) {
             $this->line("Preserved 0 {$direction} row(s) (no patterns configured)");
 
             return;
@@ -73,13 +73,13 @@ class PreserveTracesCommand extends Command
 
         $archives = $this->resolveArchives($connection, $liveTable, $schema);
 
-        if ($archives === []) {
+        if ([] === $archives) {
             $this->warn("No archives found for [{$liveTable}].");
 
             return;
         }
 
-        $matchExpression = $direction === 'incoming'
+        $matchExpression = 'incoming' === $direction
             ? 'path'
             : $this->outgoingMatchExpression($connection->getDriverName());
 
@@ -100,13 +100,13 @@ class PreserveTracesCommand extends Command
 
         $date = $this->option('date');
 
-        if ($date !== null) {
+        if (null !== $date) {
             $target = "{$liveTable}_{$date}";
 
             return in_array($target, $all, true) ? [$target] : [];
         }
 
-        return $all === [] ? [] : [end($all)];
+        return [] === $all ? [] : [end($all)];
     }
 
     private function sweepArchive(
