@@ -249,6 +249,95 @@ it('warns and exits 0 on unsupported database driver', function () {
         ->assertExitCode(0);
 });
 
+it('uses INSERT IGNORE on MySQL', function () {
+    config(['kolaybi.request-tracer.incoming.persist' => 'qnb/*']);
+
+    $live = config('kolaybi.request-tracer.incoming.table');
+    $persistent = "{$live}_persistent";
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    $mockConnection = Mockery::mock(\Illuminate\Database\Connection::class);
+    $mockConnection->shouldReceive('getDriverName')->andReturn('mysql');
+    $mockConnection->shouldReceive('getDatabaseName')->andReturn('test_db');
+
+    // tableExists for persistent table — exists.
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1',
+            Mockery::on(fn($args) => $args[1] === $persistent),
+        )
+        ->andReturn((object) ['1' => 1]);
+
+    // discoverArchiveTables returns one archive.
+    $mockConnection->shouldReceive('select')
+        ->with(
+            'SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name LIKE ?',
+            Mockery::on(fn($args) => $args[1] === "{$live}_%"),
+        )
+        ->andReturn([(object) ['table_name' => $archive]]);
+
+    $mockConnection->shouldReceive('affectingStatement')
+        ->with(
+            Mockery::pattern('/INSERT IGNORE INTO ' . preg_quote($persistent, '/') . ' SELECT \* FROM ' . preg_quote($archive, '/') . ' WHERE path LIKE \? ESCAPE/'),
+            ['qnb/%'],
+        )
+        ->once()
+        ->andReturn(3);
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->with(config('kolaybi.request-tracer.connection'))
+        ->andReturn($mockConnection);
+
+    $this->artisan('request-tracer:preserve --direction=incoming')
+        ->expectsOutputToContain("Preserved 3 incoming row(s) from [{$archive}]")
+        ->assertExitCode(0);
+});
+
+it('uses ON CONFLICT DO NOTHING on PostgreSQL', function () {
+    config(['kolaybi.request-tracer.incoming.persist' => 'qnb/*']);
+
+    $live = config('kolaybi.request-tracer.incoming.table');
+    $persistent = "{$live}_persistent";
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    $mockConnection = Mockery::mock(\Illuminate\Database\Connection::class);
+    $mockConnection->shouldReceive('getDriverName')->andReturn('pgsql');
+
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM pg_tables WHERE schemaname = ? AND tablename = ? LIMIT 1',
+            Mockery::on(fn($args) => $args[1] === $persistent),
+        )
+        ->andReturn((object) ['1' => 1]);
+
+    $mockConnection->shouldReceive('select')
+        ->with(
+            'SELECT tablename FROM pg_tables WHERE schemaname = ? AND tablename LIKE ?',
+            Mockery::on(fn($args) => $args[1] === "{$live}_%"),
+        )
+        ->andReturn([(object) ['tablename' => $archive]]);
+
+    $mockConnection->shouldReceive('affectingStatement')
+        ->with(
+            Mockery::pattern('/INSERT INTO ' . preg_quote($persistent, '/') . ' SELECT \* FROM ' . preg_quote($archive, '/') . ' WHERE path LIKE \? ESCAPE .+ ON CONFLICT \(id\) DO NOTHING/'),
+            ['qnb/%'],
+        )
+        ->once()
+        ->andReturn(2);
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->with(config('kolaybi.request-tracer.connection'))
+        ->andReturn($mockConnection);
+
+    $this->artisan('request-tracer:preserve --direction=incoming')
+        ->expectsOutputToContain("Preserved 2 incoming row(s) from [{$archive}]")
+        ->assertExitCode(0);
+});
+
 it('escapes literal % and _ in patterns', function () {
     $live = config('kolaybi.request-tracer.incoming.table');
     $persistent = "{$live}_persistent";
