@@ -137,8 +137,9 @@ class PreserveTracesCommand extends Command
     private function outgoingMatchExpression(string $driver): string
     {
         return match ($driver) {
-            'mysql'           => "TRIM(BOTH '/' FROM CONCAT(IFNULL(host, ''), IFNULL(path, '')))",
-            'pgsql', 'sqlite' => "TRIM(BOTH '/' FROM (COALESCE(host, '') || COALESCE(path, '')))",
+            'mysql'  => "TRIM(BOTH '/' FROM CONCAT(IFNULL(host, ''), IFNULL(path, '')))",
+            'pgsql'  => "TRIM(BOTH '/' FROM (COALESCE(host, '') || COALESCE(path, '')))",
+            'sqlite' => "TRIM((COALESCE(host, '') || COALESCE(path, '')), '/')",
         };
     }
 

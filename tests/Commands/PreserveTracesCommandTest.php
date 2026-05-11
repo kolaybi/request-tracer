@@ -57,6 +57,30 @@ it('preserves matching incoming rows from the most recent archive', function () 
         ->and($connection->table($persistent)->where('path', 'kolaybi/v1/anything')->count())->toBe(0);
 });
 
+it('preserves matching outgoing rows using trimmed host+path', function () {
+    $live = config('kolaybi.request-tracer.outgoing.table');
+    $persistent = "{$live}_persistent";
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    config(['kolaybi.request-tracer.outgoing.persist' => '*qnb*']);
+
+    $connection = DB::connection('testing');
+    $connection->statement("CREATE TABLE {$archive} AS SELECT * FROM {$live} WHERE 0");
+    $connection->table($archive)->insert([
+        ['id' => '01JTEST000000000000OUT001', 'host' => 'api.qnbefinans.com', 'path' => '/v1/invoices', 'method' => 'POST'],
+        ['id' => '01JTEST000000000000OUT002', 'host' => 'api.example.com',    'path' => '/qnb/relay',   'method' => 'POST'],
+        ['id' => '01JTEST000000000000OUT003', 'host' => 'api.example.com',    'path' => '/other',       'method' => 'POST'],
+    ]);
+
+    $this->artisan('request-tracer:preserve --direction=outgoing')
+        ->expectsOutputToContain("Preserved 2 outgoing row(s) from [{$archive}]")
+        ->assertExitCode(0);
+
+    expect($connection->table($persistent)->count())->toBe(2)
+        ->and($connection->table($persistent)->where('id', '01JTEST000000000000OUT003')->count())->toBe(0);
+});
+
 it('is idempotent — re-running over the same archive does not duplicate', function () {
     $live = config('kolaybi.request-tracer.incoming.table');
     $persistent = "{$live}_persistent";
