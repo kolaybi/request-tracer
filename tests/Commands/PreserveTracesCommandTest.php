@@ -30,3 +30,49 @@ it('creates the outgoing persistent table during migration', function () {
 it('registers the preserve command', function () {
     $this->artisan('request-tracer:preserve')->assertExitCode(0);
 });
+
+it('preserves matching incoming rows from the most recent archive', function () {
+    $live = config('kolaybi.request-tracer.incoming.table');
+    $persistent = "{$live}_persistent";
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    config(['kolaybi.request-tracer.incoming.persist' => 'qnb/*']);
+
+    $connection = DB::connection('testing');
+
+    $connection->statement("CREATE TABLE {$archive} AS SELECT * FROM {$live} WHERE 0");
+    $connection->table($archive)->insert([
+        ['id' => '01JTEST000000000000QNB001', 'path' => 'qnb/reports', 'method' => 'GET'],
+        ['id' => '01JTEST000000000000QNB002', 'path' => 'qnb/reports/123', 'method' => 'GET'],
+        ['id' => '01JTEST00000000000NOISE01', 'path' => 'kolaybi/v1/anything', 'method' => 'GET'],
+    ]);
+
+    $this->artisan('request-tracer:preserve')
+        ->expectsOutputToContain("Preserved 2 incoming row(s) from [{$archive}]")
+        ->assertExitCode(0);
+
+    expect($connection->table($persistent)->where('path', 'qnb/reports')->count())->toBe(1)
+        ->and($connection->table($persistent)->where('path', 'qnb/reports/123')->count())->toBe(1)
+        ->and($connection->table($persistent)->where('path', 'kolaybi/v1/anything')->count())->toBe(0);
+});
+
+it('is idempotent — re-running over the same archive does not duplicate', function () {
+    $live = config('kolaybi.request-tracer.incoming.table');
+    $persistent = "{$live}_persistent";
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    config(['kolaybi.request-tracer.incoming.persist' => 'qnb/*']);
+
+    $connection = DB::connection('testing');
+    $connection->statement("CREATE TABLE {$archive} AS SELECT * FROM {$live} WHERE 0");
+    $connection->table($archive)->insert([
+        ['id' => '01JTEST000000000000QNB001', 'path' => 'qnb/reports', 'method' => 'GET'],
+    ]);
+
+    $this->artisan('request-tracer:preserve')->assertExitCode(0);
+    $this->artisan('request-tracer:preserve')->assertExitCode(0);
+
+    expect($connection->table($persistent)->count())->toBe(1);
+});
