@@ -338,6 +338,132 @@ it('uses ON CONFLICT DO NOTHING on PostgreSQL', function () {
         ->assertExitCode(0);
 });
 
+it('translates ? glob to single-char wildcard', function () {
+    $live = config('kolaybi.request-tracer.incoming.table');
+    $persistent = "{$live}_persistent";
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    config(['kolaybi.request-tracer.incoming.persist' => 'qnb/v?/reports']);
+
+    $connection = DB::connection('testing');
+    $connection->statement("CREATE TABLE {$archive} AS SELECT * FROM {$live} WHERE 0");
+    $connection->table($archive)->insert([
+        ['id' => '01JTEST00000000000QGL00001', 'path' => 'qnb/v1/reports', 'method' => 'GET'],
+        ['id' => '01JTEST00000000000QGL00002', 'path' => 'qnb/v22/reports', 'method' => 'GET'],
+    ]);
+
+    $this->artisan('request-tracer:preserve --direction=incoming')->assertExitCode(0);
+
+    expect($connection->table($persistent)->where('path', 'qnb/v1/reports')->count())->toBe(1)
+        ->and($connection->table($persistent)->where('path', 'qnb/v22/reports')->count())->toBe(0);
+});
+
+it('accepts an array as persist config', function () {
+    $live = config('kolaybi.request-tracer.incoming.table');
+    $persistent = "{$live}_persistent";
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    config(['kolaybi.request-tracer.incoming.persist' => ['qnb/*', 'zdonusum/*']]);
+
+    $connection = DB::connection('testing');
+    $connection->statement("CREATE TABLE {$archive} AS SELECT * FROM {$live} WHERE 0");
+    $connection->table($archive)->insert([
+        ['id' => '01JTEST00000000000ARR00001', 'path' => 'qnb/reports', 'method' => 'GET'],
+        ['id' => '01JTEST00000000000ARR00002', 'path' => 'zdonusum/x', 'method' => 'GET'],
+    ]);
+
+    $this->artisan('request-tracer:preserve --direction=incoming')->assertExitCode(0);
+
+    expect($connection->table($persistent)->count())->toBe(2);
+});
+
+it('uses CONCAT+IFNULL outgoing match on MySQL', function () {
+    config(['kolaybi.request-tracer.outgoing.persist' => '*qnb*']);
+
+    $live = config('kolaybi.request-tracer.outgoing.table');
+    $persistent = "{$live}_persistent";
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    $mockConnection = Mockery::mock(\Illuminate\Database\Connection::class);
+    $mockConnection->shouldReceive('getDriverName')->andReturn('mysql');
+    $mockConnection->shouldReceive('getDatabaseName')->andReturn('test_db');
+
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM information_schema.tables WHERE table_schema = ? AND table_name = ? LIMIT 1',
+            Mockery::on(fn($args) => $args[1] === $persistent),
+        )
+        ->andReturn((object) ['1' => 1]);
+
+    $mockConnection->shouldReceive('select')
+        ->with(
+            'SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name LIKE ?',
+            Mockery::any(),
+        )
+        ->andReturn([(object) ['table_name' => $archive]]);
+
+    $mockConnection->shouldReceive('affectingStatement')
+        ->with(
+            Mockery::pattern("/TRIM\(BOTH '\/' FROM CONCAT\(IFNULL\(host, ''\), IFNULL\(path, ''\)\)\) LIKE \?/"),
+            ['%qnb%'],
+        )
+        ->once()
+        ->andReturn(1);
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->with(config('kolaybi.request-tracer.connection'))
+        ->andReturn($mockConnection);
+
+    $this->artisan('request-tracer:preserve --direction=outgoing')
+        ->assertExitCode(0);
+});
+
+it('uses COALESCE outgoing match on PostgreSQL', function () {
+    config(['kolaybi.request-tracer.outgoing.persist' => '*qnb*']);
+
+    $live = config('kolaybi.request-tracer.outgoing.table');
+    $persistent = "{$live}_persistent";
+    $dateSuffix = now()->format('Ymd');
+    $archive = "{$live}_{$dateSuffix}";
+
+    $mockConnection = Mockery::mock(\Illuminate\Database\Connection::class);
+    $mockConnection->shouldReceive('getDriverName')->andReturn('pgsql');
+
+    $mockConnection->shouldReceive('selectOne')
+        ->with(
+            'SELECT 1 FROM pg_tables WHERE schemaname = ? AND tablename = ? LIMIT 1',
+            Mockery::on(fn($args) => $args[1] === $persistent),
+        )
+        ->andReturn((object) ['1' => 1]);
+
+    $mockConnection->shouldReceive('select')
+        ->with(
+            'SELECT tablename FROM pg_tables WHERE schemaname = ? AND tablename LIKE ?',
+            Mockery::any(),
+        )
+        ->andReturn([(object) ['tablename' => $archive]]);
+
+    $mockConnection->shouldReceive('affectingStatement')
+        ->with(
+            Mockery::pattern("/TRIM\(BOTH '\/' FROM \(COALESCE\(host, ''\) \|\| COALESCE\(path, ''\)\)\) LIKE \?/"),
+            ['%qnb%'],
+        )
+        ->once()
+        ->andReturn(1);
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->with(config('kolaybi.request-tracer.connection'))
+        ->andReturn($mockConnection);
+
+    $this->artisan('request-tracer:preserve --direction=outgoing')
+        ->assertExitCode(0);
+});
+
 it('escapes literal % and _ in patterns', function () {
     $live = config('kolaybi.request-tracer.incoming.table');
     $persistent = "{$live}_persistent";
