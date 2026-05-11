@@ -13,8 +13,8 @@ beforeEach(function () {
 
 it('records soap response trace', function () {
     $soapClient = Mockery::mock(SoapClient::class);
-    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('Content-Type: text/xml');
-    $soapClient->shouldReceive('__getLastResponseHeaders')->andReturn("HTTP/1.1 200 OK\r\nContent-Type: text/xml");
+    $soapClient->allows('__getLastRequestHeaders')->andReturn('Content-Type: text/xml');
+    $soapClient->allows('__getLastResponseHeaders')->andReturn("HTTP/1.1 200 OK\r\nContent-Type: text/xml");
 
     $event = new ResponseReceivedEvent(
         soapClient: $soapClient,
@@ -44,8 +44,8 @@ it('records soap response trace', function () {
 
 it('extracts status code from response headers', function () {
     $soapClient = Mockery::mock(SoapClient::class);
-    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('');
-    $soapClient->shouldReceive('__getLastResponseHeaders')->andReturn("HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/xml");
+    $soapClient->allows('__getLastRequestHeaders')->andReturn('');
+    $soapClient->allows('__getLastResponseHeaders')->andReturn("HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/xml");
 
     $event = new ResponseReceivedEvent(
         soapClient: $soapClient,
@@ -67,8 +67,8 @@ it('extracts status code from response headers', function () {
 
 it('returns 0 status when headers have no status code', function () {
     $soapClient = Mockery::mock(SoapClient::class);
-    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('');
-    $soapClient->shouldReceive('__getLastResponseHeaders')->andReturn('');
+    $soapClient->allows('__getLastRequestHeaders')->andReturn('');
+    $soapClient->allows('__getLastResponseHeaders')->andReturn('');
 
     $event = new ResponseReceivedEvent(
         soapClient: $soapClient,
@@ -90,8 +90,8 @@ it('returns 0 status when headers have no status code', function () {
 
 it('extracts action from soap body when tempuri is empty', function () {
     $soapClient = Mockery::mock(SoapClient::class);
-    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('');
-    $soapClient->shouldReceive('__getLastResponseHeaders')->andReturn("HTTP/1.1 200 OK\r\n");
+    $soapClient->allows('__getLastRequestHeaders')->andReturn('');
+    $soapClient->allows('__getLastResponseHeaders')->andReturn("HTTP/1.1 200 OK\r\n");
 
     $soapBody = '<?xml version="1.0"?><SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/"><SOAP-ENV:Body><CustomOperation/></SOAP-ENV:Body></SOAP-ENV:Envelope>';
 
@@ -115,8 +115,8 @@ it('extracts action from soap body when tempuri is empty', function () {
 
 it('stores null response_size when response is null', function () {
     $soapClient = Mockery::mock(SoapClient::class);
-    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('');
-    $soapClient->shouldReceive('__getLastResponseHeaders')->andReturn('');
+    $soapClient->allows('__getLastRequestHeaders')->andReturn('');
+    $soapClient->allows('__getLastResponseHeaders')->andReturn('');
 
     $event = new ResponseReceivedEvent(
         soapClient: $soapClient,
@@ -141,8 +141,8 @@ it('stores null response_size when response is null', function () {
 
 it('captures response size correctly', function () {
     $soapClient = Mockery::mock(SoapClient::class);
-    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('Content-Type: text/xml');
-    $soapClient->shouldReceive('__getLastResponseHeaders')->andReturn("HTTP/1.1 200 OK\r\nContent-Type: text/xml");
+    $soapClient->allows('__getLastRequestHeaders')->andReturn('Content-Type: text/xml');
+    $soapClient->allows('__getLastResponseHeaders')->andReturn("HTTP/1.1 200 OK\r\nContent-Type: text/xml");
 
     $responseBody = '<soap:Envelope><soap:Body><Result>Data here</Result></soap:Body></soap:Envelope>';
 

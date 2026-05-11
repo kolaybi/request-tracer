@@ -13,7 +13,7 @@ beforeEach(function () {
 
 it('records soap connection failure trace', function () {
     $soapClient = Mockery::mock(SoapClient::class);
-    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('');
+    $soapClient->allows('__getLastRequestHeaders')->andReturn('');
 
     $exception = new RuntimeException('SOAP connection failed', 500);
 
@@ -45,7 +45,7 @@ it('records soap connection failure trace', function () {
 
 it('records soap failure with channel and extra', function () {
     $soapClient = Mockery::mock(SoapClient::class);
-    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('');
+    $soapClient->allows('__getLastRequestHeaders')->andReturn('');
 
     $exception = new RuntimeException('Service unavailable', 503);
 
@@ -73,7 +73,7 @@ it('records soap failure with channel and extra', function () {
 
 it('records soap failure with string extra passed as-is', function () {
     $soapClient = Mockery::mock(SoapClient::class);
-    $soapClient->shouldReceive('__getLastRequestHeaders')->andReturn('');
+    $soapClient->allows('__getLastRequestHeaders')->andReturn('');
 
     $exception = new RuntimeException('fail', 500);
 

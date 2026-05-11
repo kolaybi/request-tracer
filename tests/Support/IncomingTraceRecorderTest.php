@@ -75,8 +75,8 @@ it('uses content-length header when getContent returns false', function () {
     $request = Request::create('/test', 'GET');
 
     $response = Mockery::mock(Response::class);
-    $response->shouldReceive('getStatusCode')->andReturn(200);
-    $response->shouldReceive('getContent')->andReturn(false);
+    $response->allows('getStatusCode')->andReturn(200);
+    $response->allows('getContent')->andReturn(false);
     $response->headers = new ResponseHeaderBag([
         'Content-Length' => '1234',
         'Content-Type'   => 'application/octet-stream',
@@ -94,8 +94,8 @@ it('returns null size when content is false and no content-length header', funct
     $request = Request::create('/test', 'GET');
 
     $response = Mockery::mock(Response::class);
-    $response->shouldReceive('getStatusCode')->andReturn(200);
-    $response->shouldReceive('getContent')->andReturn(false);
+    $response->allows('getStatusCode')->andReturn(200);
+    $response->allows('getContent')->andReturn(false);
     $response->headers = new ResponseHeaderBag([]);
 
     $recorder = new IncomingTraceRecorder();
@@ -112,8 +112,8 @@ it('returns null response body when capture enabled but getContent returns false
     $request = Request::create('/test', 'GET');
 
     $response = Mockery::mock(Response::class);
-    $response->shouldReceive('getStatusCode')->andReturn(200);
-    $response->shouldReceive('getContent')->andReturn(false);
+    $response->allows('getStatusCode')->andReturn(200);
+    $response->allows('getContent')->andReturn(false);
     $response->headers = new ResponseHeaderBag([]);
 
     $recorder = new IncomingTraceRecorder();
@@ -140,10 +140,10 @@ it('uses custom tenant column from config', function () {
 
 it('resolves context provider for tenant and user', function () {
     $provider = Mockery::mock(TraceContextProvider::class);
-    $provider->shouldReceive('tenantId')->andReturn(42);
-    $provider->shouldReceive('userId')->andReturn(7);
-    $provider->shouldReceive('clientIp')->andReturn('10.0.0.1');
-    $provider->shouldReceive('serverIdentifier')->andReturn('web-01');
+    $provider->allows('tenantId')->andReturn(42);
+    $provider->allows('userId')->andReturn(7);
+    $provider->allows('clientIp')->andReturn('10.0.0.1');
+    $provider->allows('serverIdentifier')->andReturn('web-01');
 
     app()->instance(TraceContextProvider::class, $provider);
 
@@ -164,8 +164,8 @@ it('returns zero response size for zero Content-Length', function () {
     $request = Request::create('/test', 'GET');
 
     $response = Mockery::mock(Response::class);
-    $response->shouldReceive('getStatusCode')->andReturn(200);
-    $response->shouldReceive('getContent')->andReturn(false);
+    $response->allows('getStatusCode')->andReturn(200);
+    $response->allows('getContent')->andReturn(false);
     $response->headers = new ResponseHeaderBag([
         'Content-Length' => '0',
     ]);
@@ -182,8 +182,8 @@ it('returns null response size for non-numeric Content-Length', function () {
     $request = Request::create('/test', 'GET');
 
     $response = Mockery::mock(Response::class);
-    $response->shouldReceive('getStatusCode')->andReturn(200);
-    $response->shouldReceive('getContent')->andReturn(false);
+    $response->allows('getStatusCode')->andReturn(200);
+    $response->allows('getContent')->andReturn(false);
     $response->headers = new ResponseHeaderBag([
         'Content-Length' => 'not-a-number',
     ]);
@@ -301,8 +301,8 @@ it('clamps negative Content-Length to zero', function () {
     $request = Request::create('/test', 'GET');
 
     $response = Mockery::mock(Response::class);
-    $response->shouldReceive('getStatusCode')->andReturn(200);
-    $response->shouldReceive('getContent')->andReturn(false);
+    $response->allows('getStatusCode')->andReturn(200);
+    $response->allows('getContent')->andReturn(false);
     $response->headers = new ResponseHeaderBag([
         'Content-Length' => '-5',
     ]);

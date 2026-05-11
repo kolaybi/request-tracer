@@ -15,8 +15,8 @@ beforeEach(function () {
 
 it('returns empty archive table list for unsupported drivers', function () {
     $connection = Mockery::mock(Connection::class);
-    $connection->shouldReceive('getDriverName')->once()->andReturn('sqlsrv');
-    $connection->shouldNotReceive('select');
+    $connection->expects('getDriverName')->andReturn('sqlsrv');
+    $connection->expects('select')->never();
 
     $tables = $this->queriesArchiveTables->discoverArchiveTables($connection, 'outgoing_request_traces', null);
 
@@ -25,11 +25,10 @@ it('returns empty archive table list for unsupported drivers', function () {
 
 it('discovers MySQL archive tables matching date suffix pattern', function () {
     $connection = Mockery::mock(Connection::class);
-    $connection->shouldReceive('getDriverName')->once()->andReturn('mysql');
-    $connection->shouldReceive('getDatabaseName')->once()->andReturn('test_db');
+    $connection->expects('getDriverName')->andReturn('mysql');
+    $connection->expects('getDatabaseName')->andReturn('test_db');
 
-    $connection->shouldReceive('select')
-        ->once()
+    $connection->expects('select')
         ->with(
             'SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name LIKE ?',
             ['test_db', 'outgoing_request_traces_%'],
@@ -46,10 +45,9 @@ it('discovers MySQL archive tables matching date suffix pattern', function () {
 
 it('discovers MySQL archive tables with schema override', function () {
     $connection = Mockery::mock(Connection::class);
-    $connection->shouldReceive('getDriverName')->once()->andReturn('mysql');
+    $connection->expects('getDriverName')->andReturn('mysql');
 
-    $connection->shouldReceive('select')
-        ->once()
+    $connection->expects('select')
         ->with(
             'SELECT table_name FROM information_schema.tables WHERE table_schema = ? AND table_name LIKE ?',
             ['custom_schema', 'outgoing_request_traces_%'],
@@ -63,13 +61,13 @@ it('discovers MySQL archive tables with schema override', function () {
 
 it('discovers MySQL archive tables using TABLE_NAME column variant', function () {
     $connection = Mockery::mock(Connection::class);
-    $connection->shouldReceive('getDriverName')->once()->andReturn('mysql');
-    $connection->shouldReceive('getDatabaseName')->once()->andReturn('test_db');
+    $connection->expects('getDriverName')->andReturn('mysql');
+    $connection->expects('getDatabaseName')->andReturn('test_db');
 
     // Some MySQL versions return TABLE_NAME instead of table_name
     $row = new stdClass();
     $row->TABLE_NAME = 'outgoing_request_traces_20260301';
-    $connection->shouldReceive('select')->once()->andReturn([$row]);
+    $connection->expects('select')->andReturn([$row]);
 
     $tables = $this->queriesArchiveTables->discoverArchiveTables($connection, 'outgoing_request_traces', null);
 
@@ -78,10 +76,9 @@ it('discovers MySQL archive tables using TABLE_NAME column variant', function ()
 
 it('discovers PostgreSQL archive tables matching date suffix pattern', function () {
     $connection = Mockery::mock(Connection::class);
-    $connection->shouldReceive('getDriverName')->once()->andReturn('pgsql');
+    $connection->expects('getDriverName')->andReturn('pgsql');
 
-    $connection->shouldReceive('select')
-        ->once()
+    $connection->expects('select')
         ->with(
             'SELECT tablename FROM pg_tables WHERE schemaname = ? AND tablename LIKE ?',
             ['public', 'outgoing_request_traces_%'],
@@ -98,10 +95,9 @@ it('discovers PostgreSQL archive tables matching date suffix pattern', function 
 
 it('discovers PostgreSQL archive tables with custom schema', function () {
     $connection = Mockery::mock(Connection::class);
-    $connection->shouldReceive('getDriverName')->once()->andReturn('pgsql');
+    $connection->expects('getDriverName')->andReturn('pgsql');
 
-    $connection->shouldReceive('select')
-        ->once()
+    $connection->expects('select')
         ->with(
             'SELECT tablename FROM pg_tables WHERE schemaname = ? AND tablename LIKE ?',
             ['custom_schema', 'outgoing_request_traces_%'],
@@ -115,7 +111,7 @@ it('discovers PostgreSQL archive tables with custom schema', function () {
 
 it('strips schema prefix from model table name', function () {
     $model = Mockery::mock(Model::class);
-    $model->shouldReceive('getTable')->andReturn('my_schema.outgoing_request_traces');
+    $model->allows('getTable')->andReturn('my_schema.outgoing_request_traces');
 
     config(['kolaybi.request-tracer.schema' => 'my_schema']);
 
@@ -126,7 +122,7 @@ it('strips schema prefix from model table name', function () {
 
 it('returns table name unchanged when no schema prefix present', function () {
     $model = Mockery::mock(Model::class);
-    $model->shouldReceive('getTable')->andReturn('outgoing_request_traces');
+    $model->allows('getTable')->andReturn('outgoing_request_traces');
 
     config(['kolaybi.request-tracer.schema' => 'my_schema']);
 
