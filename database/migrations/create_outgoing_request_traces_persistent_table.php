@@ -8,15 +8,19 @@ use KolayBi\RequestTracer\Support\TraceTableBlueprint;
 return new class () extends Migration {
     public function up(): void
     {
+        $persistentTable = config('kolaybi.request-tracer.outgoing.table', 'outgoing_request_traces') . '_persistent';
+
         Schema::connection(config('kolaybi.request-tracer.connection'))
-            ->create(config('kolaybi.request-tracer.incoming.table', 'incoming_request_traces'), function (Blueprint $table) {
-                TraceTableBlueprint::incoming($table);
+            ->create($persistentTable, function (Blueprint $table) {
+                TraceTableBlueprint::outgoing($table);
             });
     }
 
     public function down(): void
     {
+        $persistentTable = config('kolaybi.request-tracer.outgoing.table', 'outgoing_request_traces') . '_persistent';
+
         Schema::connection(config('kolaybi.request-tracer.connection'))
-            ->dropIfExists(config('kolaybi.request-tracer.incoming.table', 'incoming_request_traces'));
+            ->dropIfExists($persistentTable);
     }
 };
