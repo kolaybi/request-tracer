@@ -270,6 +270,40 @@ Or set `retention_days` in config and schedule it:
 $schedule->command('request-tracer:purge')->daily();
 ```
 
+### Preserving Selected Traces
+
+Some traces are operationally critical (e.g. integrations with external systems for audit purposes) and must survive rotation and retention. The `request-tracer:preserve` command sweeps rows matching configured glob patterns from the just-rotated archive table into a permanent `*_persistent` table.
+
+Configure persist patterns per direction:
+
+```env
+REQUEST_TRACER_INCOMING_PERSIST=api/*,kolaybi/*
+REQUEST_TRACER_OUTGOING_PERSIST=*api*
+```
+
+- **Incoming** patterns match `request->path()` (same as `INCOMING_ONLY`).
+- **Outgoing** patterns match the trimmed `host + path` string (same as `OUTGOING_ONLY`).
+
+Wire the command to run immediately after rotation:
+
+```php
+$schedule->command('request-tracer:rotate')
+    ->daily()
+    ->then(function () {
+        $this->call('request-tracer:preserve');
+    });
+```
+
+Backfill or re-run a specific archive:
+
+```bash
+php artisan request-tracer:preserve --date=20260511
+php artisan request-tracer:preserve --all
+php artisan request-tracer:preserve --direction=incoming
+```
+
+The command is idempotent: re-running over the same archive does not duplicate rows (uses `INSERT IGNORE` / `ON CONFLICT DO NOTHING` keyed on the ULID PK).
+
 ## How It Works
 
 ### Outgoing Traces
