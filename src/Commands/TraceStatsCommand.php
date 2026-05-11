@@ -118,6 +118,6 @@ class TraceStatsCommand extends Command
             return '—';
         }
 
-        return number_format((float) $value, 0) . 'ms';
+        return number_format((float) $value, decimals: 0) . 'ms';
     }
 }

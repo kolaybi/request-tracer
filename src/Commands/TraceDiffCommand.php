@@ -222,8 +222,8 @@ class TraceDiffCommand extends Command
         similar_text($b1, $b2, $percent);
         $this->line(sprintf('  Similarity: %.1f%%', $percent));
 
-        $this->line('  <fg=gray>[1]</> ' . Str::limit($b1, 200, '...'));
-        $this->line('  <fg=gray>[2]</> ' . Str::limit($b2, 200, '...'));
+        $this->line('  <fg=gray>[1]</> ' . Str::limit($b1, 200));
+        $this->line('  <fg=gray>[2]</> ' . Str::limit($b2, 200));
         $this->newLine();
     }
 }
