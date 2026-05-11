@@ -81,6 +81,85 @@ it('preserves matching outgoing rows using trimmed host+path', function () {
         ->and($connection->table($persistent)->where('id', '01JTEST000000000000OUT003')->count())->toBe(0);
 });
 
+it('preserves from a specific archive when --date is provided', function () {
+    $live = config('kolaybi.request-tracer.incoming.table');
+    $persistent = "{$live}_persistent";
+    $targetDate = now()->subDays(3)->format('Ymd');
+    $targetArchive = "{$live}_{$targetDate}";
+    $otherDate = now()->subDays(1)->format('Ymd');
+    $otherArchive = "{$live}_{$otherDate}";
+
+    config(['kolaybi.request-tracer.incoming.persist' => 'qnb/*']);
+
+    $connection = DB::connection('testing');
+    $connection->statement("CREATE TABLE {$targetArchive} AS SELECT * FROM {$live} WHERE 0");
+    $connection->statement("CREATE TABLE {$otherArchive} AS SELECT * FROM {$live} WHERE 0");
+
+    $connection->table($targetArchive)->insert([
+        ['id' => '01JTEST00000000000DATE001', 'path' => 'qnb/old', 'method' => 'GET'],
+    ]);
+    $connection->table($otherArchive)->insert([
+        ['id' => '01JTEST00000000000DATE002', 'path' => 'qnb/new', 'method' => 'GET'],
+    ]);
+
+    $this->artisan("request-tracer:preserve --date={$targetDate} --direction=incoming")
+        ->expectsOutputToContain("Preserved 1 incoming row(s) from [{$targetArchive}]")
+        ->assertExitCode(0);
+
+    expect($connection->table($persistent)->where('path', 'qnb/old')->count())->toBe(1)
+        ->and($connection->table($persistent)->where('path', 'qnb/new')->count())->toBe(0);
+});
+
+it('preserves from every archive when --all is provided', function () {
+    $live = config('kolaybi.request-tracer.incoming.table');
+    $persistent = "{$live}_persistent";
+    $d1 = now()->subDays(3)->format('Ymd');
+    $d2 = now()->subDays(2)->format('Ymd');
+    $a1 = "{$live}_{$d1}";
+    $a2 = "{$live}_{$d2}";
+
+    config(['kolaybi.request-tracer.incoming.persist' => 'qnb/*']);
+
+    $connection = DB::connection('testing');
+    $connection->statement("CREATE TABLE {$a1} AS SELECT * FROM {$live} WHERE 0");
+    $connection->statement("CREATE TABLE {$a2} AS SELECT * FROM {$live} WHERE 0");
+    $connection->table($a1)->insert([['id' => '01JTEST0000000000ALL00001', 'path' => 'qnb/a', 'method' => 'GET']]);
+    $connection->table($a2)->insert([['id' => '01JTEST0000000000ALL00002', 'path' => 'qnb/b', 'method' => 'GET']]);
+
+    $this->artisan('request-tracer:preserve --all --direction=incoming')->assertExitCode(0);
+
+    expect($connection->table($persistent)->count())->toBe(2);
+});
+
+it('respects --direction=incoming and skips outgoing', function () {
+    $incomingLive = config('kolaybi.request-tracer.incoming.table');
+    $outgoingLive = config('kolaybi.request-tracer.outgoing.table');
+    $outgoingPersistent = "{$outgoingLive}_persistent";
+    $dateSuffix = now()->format('Ymd');
+
+    config([
+        'kolaybi.request-tracer.incoming.persist' => 'qnb/*',
+        'kolaybi.request-tracer.outgoing.persist' => '*qnb*',
+    ]);
+
+    $connection = DB::connection('testing');
+    $connection->statement("CREATE TABLE {$incomingLive}_{$dateSuffix} AS SELECT * FROM {$incomingLive} WHERE 0");
+    $connection->statement("CREATE TABLE {$outgoingLive}_{$dateSuffix} AS SELECT * FROM {$outgoingLive} WHERE 0");
+    $connection->table("{$outgoingLive}_{$dateSuffix}")->insert([
+        ['id' => '01JTEST0000000000DIR00001', 'host' => 'api.qnb.com', 'path' => '/x', 'method' => 'GET'],
+    ]);
+
+    $this->artisan('request-tracer:preserve --direction=incoming')->assertExitCode(0);
+
+    expect($connection->table($outgoingPersistent)->count())->toBe(0);
+});
+
+it('fails when --direction is an unknown value', function () {
+    $this->artisan('request-tracer:preserve --direction=sideways')
+        ->expectsOutputToContain('Invalid --direction value [sideways]')
+        ->assertExitCode(1);
+});
+
 it('is idempotent — re-running over the same archive does not duplicate', function () {
     $live = config('kolaybi.request-tracer.incoming.table');
     $persistent = "{$live}_persistent";
