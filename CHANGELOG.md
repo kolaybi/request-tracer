@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.6.0](https://github.com/kolaybi/request-tracer/compare/v1.5.0...v1.6.0) (2026-06-23)
+
+### Changed
+- `Http::channel()` / `Http::traceOf()` and `TracingSoapClient::channel()` / `traceOf()` now accept a `string|UnitEnum|null` channel. Backed enums resolve to their `value`, pure enums to the case name (normalized to a string), strings and `null` pass through unchanged.
+
 ## [v1.5.0](https://github.com/kolaybi/request-tracer/compare/v1.4.0...v1.5.0) (2026-05-11)
 
 ### Added
