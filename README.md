@@ -149,6 +149,17 @@ Http::traceOf('bank-api')
     ->get('https://bank.example.com/status');
 ```
 
+`channel()` and `traceOf()` also accept an enum. Backed enums resolve to their `value`, pure enums to the case name:
+
+```php
+enum Channel: string
+{
+    case PaymentGateway = 'payment-gateway';
+}
+
+Http::channel(Channel::PaymentGateway)->post('https://api.example.com/charge', $data);
+```
+
 ### SOAP Tracing
 
 Extend `TracingSoapClient` for traced SOAP calls:

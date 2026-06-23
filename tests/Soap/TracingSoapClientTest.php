@@ -5,6 +5,9 @@ use KolayBi\RequestTracer\Events\Soap\ConnectionFailedEvent;
 use KolayBi\RequestTracer\Events\Soap\RequestSendingEvent;
 use KolayBi\RequestTracer\Events\Soap\ResponseReceivedEvent;
 use KolayBi\RequestTracer\Soap\TracingSoapClient;
+use KolayBi\RequestTracer\Tests\Fixtures\IntChannel;
+use KolayBi\RequestTracer\Tests\Fixtures\PureChannel;
+use KolayBi\RequestTracer\Tests\Fixtures\StringChannel;
 use KolayBi\RequestTracer\Tests\Fixtures\TestableTracingSoapClient;
 
 $wsdlPath = __DIR__ . '/../Fixtures/minimal.wsdl';
@@ -62,6 +65,42 @@ it('sets trace channel via channel alias', function () {
     $result = $client->channel('e-invoice');
 
     expect($result)->toBeInstanceOf(TracingSoapClient::class);
+});
+
+it('dispatches ResponseReceivedEvent with string-backed enum channel as its value', function () use ($wsdlPath) {
+    Event::fake([RequestSendingEvent::class, ResponseReceivedEvent::class]);
+
+    $client = new TestableTracingSoapClient($wsdlPath, ['trace' => true]);
+    $client->setCannedResponse('<PingResponse/>');
+    $client->traceOf(StringChannel::EInvoice);
+
+    $client->__doRequest('<Ping/>', 'http://localhost:9999/soap', 'Ping', SOAP_1_1);
+
+    Event::assertDispatched(ResponseReceivedEvent::class, fn(ResponseReceivedEvent $event) => 'e-invoice' === $event->channel);
+});
+
+it('dispatches ResponseReceivedEvent with int-backed enum channel as its value', function () use ($wsdlPath) {
+    Event::fake([RequestSendingEvent::class, ResponseReceivedEvent::class]);
+
+    $client = new TestableTracingSoapClient($wsdlPath, ['trace' => true]);
+    $client->setCannedResponse('<PingResponse/>');
+    $client->channel(IntChannel::EInvoice);
+
+    $client->__doRequest('<Ping/>', 'http://localhost:9999/soap', 'Ping', SOAP_1_1);
+
+    Event::assertDispatched(ResponseReceivedEvent::class, fn(ResponseReceivedEvent $event) => '2' === $event->channel);
+});
+
+it('dispatches ResponseReceivedEvent with pure unit enum channel as its case name', function () use ($wsdlPath) {
+    Event::fake([RequestSendingEvent::class, ResponseReceivedEvent::class]);
+
+    $client = new TestableTracingSoapClient($wsdlPath, ['trace' => true]);
+    $client->setCannedResponse('<PingResponse/>');
+    $client->traceOf(PureChannel::Payment);
+
+    $client->__doRequest('<Ping/>', 'http://localhost:9999/soap', 'Ping', SOAP_1_1);
+
+    Event::assertDispatched(ResponseReceivedEvent::class, fn(ResponseReceivedEvent $event) => 'Payment' === $event->channel);
 });
 
 it('sets trace extra via withTraceExtra', function () {

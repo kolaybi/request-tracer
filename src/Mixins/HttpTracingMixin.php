@@ -4,6 +4,8 @@ namespace KolayBi\RequestTracer\Mixins;
 
 use Closure;
 use Illuminate\Support\Facades\Http;
+use KolayBi\RequestTracer\Support\TraceHelper;
+use UnitEnum;
 
 /**
  * @mixin Http
@@ -11,17 +13,17 @@ use Illuminate\Support\Facades\Http;
 class HttpTracingMixin
 {
     /**
-     * @return Closure(?string): static
+     * @return Closure(string|UnitEnum|null): static
      */
     public function traceOf(): Closure
     {
-        return function (?string $channel) {
-            return $this->withAttributes(['request_tracer' => ['channel' => $channel]]);
+        return function (string|UnitEnum|null $channel) {
+            return $this->withAttributes(['request_tracer' => ['channel' => TraceHelper::normalizeChannel($channel)]]);
         };
     }
 
     /**
-     * @return Closure(?string): static
+     * @return Closure(string|UnitEnum|null): static
      */
     public function channel(): Closure
     {

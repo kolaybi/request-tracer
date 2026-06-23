@@ -2,11 +2,23 @@
 
 namespace KolayBi\RequestTracer\Support;
 
+use BackedEnum;
 use Carbon\CarbonImmutable;
 use KolayBi\RequestTracer\Jobs\StoreTraceJob;
+use UnitEnum;
 
 class TraceHelper
 {
+    public static function normalizeChannel(string|UnitEnum|null $channel): ?string
+    {
+        return match (true) {
+            null === $channel              => null,
+            $channel instanceof BackedEnum => (string) $channel->value,
+            $channel instanceof UnitEnum   => $channel->name,
+            default                        => $channel,
+        };
+    }
+
     public static function dispatchTrace(array $attributes, string $modelClass): void
     {
         $attributes['duration'] = self::calculateDuration($attributes['start'] ?? null, $attributes['end'] ?? null);

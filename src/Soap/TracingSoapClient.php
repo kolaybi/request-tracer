@@ -6,11 +6,13 @@ use KolayBi\RequestTracer\Events\Soap\ConnectionFailedEvent;
 use KolayBi\RequestTracer\Events\Soap\RequestSendingEvent;
 use KolayBi\RequestTracer\Events\Soap\ResponseReceivedEvent;
 use KolayBi\RequestTracer\Support\Timestamp;
+use KolayBi\RequestTracer\Support\TraceHelper;
 use Override;
 use RuntimeException;
 use SoapClient;
 use SoapFault;
 use Throwable;
+use UnitEnum;
 
 class TracingSoapClient extends SoapClient
 {
@@ -173,14 +175,14 @@ class TracingSoapClient extends SoapClient
         }
     }
 
-    public function traceOf(?string $channel): static
+    public function traceOf(string|UnitEnum|null $channel): static
     {
-        $this->traceChannel = $channel;
+        $this->traceChannel = TraceHelper::normalizeChannel($channel);
 
         return $this;
     }
 
-    public function channel(?string $channel): static
+    public function channel(string|UnitEnum|null $channel): static
     {
         return $this->traceOf($channel);
     }

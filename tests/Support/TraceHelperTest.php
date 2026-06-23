@@ -4,6 +4,9 @@ use Illuminate\Support\Facades\Queue;
 use KolayBi\RequestTracer\Jobs\StoreTraceJob;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 use KolayBi\RequestTracer\Support\TraceHelper;
+use KolayBi\RequestTracer\Tests\Fixtures\IntChannel;
+use KolayBi\RequestTracer\Tests\Fixtures\PureChannel;
+use KolayBi\RequestTracer\Tests\Fixtures\StringChannel;
 
 beforeEach(function () {
     Queue::fake();
@@ -343,4 +346,26 @@ it('preserves non-sensitive query params', function () {
     $result = TraceHelper::normalizeQuery('page=1&limit=50');
 
     expect($result)->toBe('page=1&limit=50');
+});
+
+// --- normalizeChannel ---
+
+it('returns plain string channel unchanged', function () {
+    expect(TraceHelper::normalizeChannel('payment'))->toBe('payment');
+});
+
+it('returns null for null channel', function () {
+    expect(TraceHelper::normalizeChannel(null))->toBeNull();
+});
+
+it('normalizes a string-backed enum to its value', function () {
+    expect(TraceHelper::normalizeChannel(StringChannel::EInvoice))->toBe('e-invoice');
+});
+
+it('normalizes an int-backed enum to its value as a string', function () {
+    expect(TraceHelper::normalizeChannel(IntChannel::EInvoice))->toBe('2');
+});
+
+it('normalizes a pure unit enum to its case name', function () {
+    expect(TraceHelper::normalizeChannel(PureChannel::Payment))->toBe('Payment');
 });
