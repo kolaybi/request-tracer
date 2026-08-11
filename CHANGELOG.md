@@ -7,8 +7,6 @@ All notable changes to this project will be documented in this file.
 ### Added
 - `request-tracer:tail` verbosity levels — `-v` renders the full endpoint (no truncation) plus the record `id=`; `-vv` adds `trace=`, `tenant=`, `user=` and `ip=`; `-vvv` adds `req=`/`res=` byte sizes, `server=` and the outgoing failure `msg=`. Null fields are omitted.
 - `request-tracer:tail --method` filter — a single method (`--method=GET`) or comma-separated list (`--method=GET,POST`).
-
-### Added
 - `TraceDirection` enum — replaces the `OUTGOING`/`INCOMING` string literals threaded through the debugging commands and `BuildsEndpoint`.
 
 ### Changed
