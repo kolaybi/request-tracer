@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 
 ### Added
-- `request-tracer:tail` verbosity levels — `-v` renders the full endpoint (no 55-char truncation) plus the record `id=`; `-vv` adds `trace=`, `tenant=`, `user=` and `ip=`; `-vvv` adds `req=`/`res=` byte sizes, `server=` and the outgoing failure `msg=`. Null fields are omitted.
+- `request-tracer:tail` verbosity levels — `-v` renders the full endpoint (no truncation) plus the record `id=`; `-vv` adds `trace=`, `tenant=`, `user=` and `ip=`; `-vvv` adds `req=`/`res=` byte sizes, `server=` and the outgoing failure `msg=`. Null fields are omitted.
 - `request-tracer:tail --method` filter — a single method (`--method=GET`) or comma-separated list (`--method=GET,POST`).
 
 ### Added
@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file.
 - `--type` is now case-insensitive in `request-tracer:search` and `request-tracer:stats` too (uppercase values previously matched nothing), and an invalid `--type` value errors out with exit code 1 in tail, search and stats instead of silently producing no results.
 - `colorStatus` extracted to a shared `ColorsStatus` concern — the tail and inspect copies had drifted, so `request-tracer:tail` now renders 3xx statuses cyan like inspect (previously white).
 - Inline display and loop literals in the debugging commands (truncation limits, poll clamps, prune thresholds, stats top-N) are now named class constants.
+- Tail and search share one endpoint display limit on `BuildsEndpoint` (60 chars — tail's default line previously truncated at 55).
 
 ## [v1.6.0](https://github.com/kolaybi/request-tracer/compare/v1.5.0...v1.6.0) (2026-06-23)
 
