@@ -563,3 +563,56 @@ it('filters method case insensitively', function () {
         ->toContain('get-request.example.com')
         ->not->toContain('options-request.example.com');
 });
+
+it('filters type case insensitively', function () {
+    tailInsertOutgoingOnFirstPoll([
+        ['host' => 'uppercase-type.example.com', 'method' => 'GET'],
+    ]);
+
+    $buffer = new BufferedOutput();
+    Artisan::call('request-tracer:tail', ['--max-polls' => 1, '--type' => 'OUTGOING', '--interval' => 1], $buffer);
+
+    expect($buffer->fetch())->toContain('uppercase-type.example.com');
+});
+
+it('filters status range case insensitively', function () {
+    tailInsertOutgoingOnFirstPoll([
+        ['host' => 'server-error.example.com', 'method' => 'GET', 'status' => 500],
+        ['host' => 'success.example.com', 'method' => 'GET', 'status' => 200],
+    ]);
+
+    $buffer = new BufferedOutput();
+    Artisan::call('request-tracer:tail', ['--max-polls' => 1, '--type' => 'outgoing', '--interval' => 1, '--status' => '5XX'], $buffer);
+
+    expect($buffer->fetch())
+        ->toContain('server-error.example.com')
+        ->not->toContain('success.example.com');
+});
+
+it('filters channel case insensitively', function () {
+    tailInsertOutgoingOnFirstPoll([
+        ['host' => 'payments-channel.example.com', 'method' => 'GET', 'channel' => 'payments'],
+        ['host' => 'other-channel.example.com', 'method' => 'GET', 'channel' => 'billing'],
+    ]);
+
+    $buffer = new BufferedOutput();
+    Artisan::call('request-tracer:tail', ['--max-polls' => 1, '--type' => 'outgoing', '--interval' => 1, '--channel' => 'PAYMENTS'], $buffer);
+
+    expect($buffer->fetch())
+        ->toContain('payments-channel.example.com')
+        ->not->toContain('other-channel.example.com');
+});
+
+it('filters host case insensitively', function () {
+    tailInsertOutgoingOnFirstPoll([
+        ['host' => 'api.example.com', 'method' => 'GET'],
+        ['host' => 'other.example.com', 'method' => 'GET'],
+    ]);
+
+    $buffer = new BufferedOutput();
+    Artisan::call('request-tracer:tail', ['--max-polls' => 1, '--type' => 'outgoing', '--interval' => 1, '--host' => 'API.*'], $buffer);
+
+    expect($buffer->fetch())
+        ->toContain('api.example.com')
+        ->not->toContain('other.example.com');
+});

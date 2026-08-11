@@ -28,7 +28,7 @@ class TraceTailCommand extends Command
 
     public function handle(): int
     {
-        $type = $this->option('type');
+        $type = $this->option('type') ? strtolower($this->option('type')) : null;
         $interval = max(1, min(60, (int) $this->option('interval')));
         $maxPolls = $this->option('max-polls') ? (int) $this->option('max-polls') : null;
 
@@ -118,6 +118,8 @@ class TraceTailCommand extends Command
         }
 
         if ($status = $this->option('status')) {
+            $status = strtolower($status);
+
             if (Str::endsWith($status, 'xx')) {
                 $base = (int) Str::before($status, 'xx');
                 $query->whereBetween('status', [$base * 100, ($base * 100) + 99]);
@@ -133,7 +135,7 @@ class TraceTailCommand extends Command
         }
 
         if ($channel = $this->option('channel')) {
-            $query->where('channel', $channel);
+            $query->whereRaw('LOWER(channel) = ?', [strtolower($channel)]);
         }
 
         return $query;
