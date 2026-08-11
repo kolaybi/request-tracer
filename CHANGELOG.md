@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## [v1.7.0](https://github.com/kolaybi/request-tracer/compare/v1.6.0...v1.7.0) (2026-08-11)
 
 ### Added
 - `request-tracer:tail` verbosity levels — `-v` renders the full endpoint (no truncation) plus the record `id=`; `-vv` adds `trace=`, `tenant=`, `user=` and `ip=`; `-vvv` adds `req=`/`res=` byte sizes, `server=` and the outgoing failure `msg=`. Null fields are omitted.
