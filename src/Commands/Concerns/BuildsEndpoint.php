@@ -8,6 +8,8 @@ use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
 trait BuildsEndpoint
 {
+    private const int ENDPOINT_DISPLAY_LIMIT = 60;
+
     private function buildEndpoint(IncomingRequestTrace|OutgoingRequestTrace $trace, TraceDirection $direction): string
     {
         $protocol = $trace->protocol ?? null;

@@ -18,8 +18,6 @@ class TraceTailCommand extends Command
     use BuildsEndpoint;
     use ColorsStatus;
 
-    private const int ENDPOINT_DISPLAY_LIMIT = 55;
-
     private const int MESSAGE_DISPLAY_LIMIT = 80;
 
     private const int METHOD_PAD_WIDTH = 7;

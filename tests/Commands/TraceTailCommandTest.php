@@ -341,8 +341,9 @@ it('truncates long endpoints at default verbosity', function () {
 
     $output = tailRenderLine(OutputInterface::VERBOSITY_NORMAL, $trace, TraceDirection::Outgoing);
 
+    // Same 60-char display limit as the search command
     expect($output)
-        ->toContain('...')
+        ->toContain(Str::limit('api.example.com/v1/' . str_repeat('x', 80), 60))
         ->not->toContain(str_repeat('x', 80));
 });
 
