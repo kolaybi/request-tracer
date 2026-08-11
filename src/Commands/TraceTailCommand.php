@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
+use KolayBi\RequestTracer\Enums\TraceDirection;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -28,7 +29,14 @@ class TraceTailCommand extends Command
 
     public function handle(): int
     {
-        $type = $this->option('type') ? strtolower($this->option('type')) : null;
+        $direction = TraceDirection::tryFromInput($type = $this->option('type'));
+
+        if ($type && !$direction) {
+            $this->error("Invalid type: {$type}. Use incoming or outgoing.");
+
+            return self::FAILURE;
+        }
+
         $interval = max(1, min(60, (int) $this->option('interval')));
         $maxPolls = $this->option('max-polls') ? (int) $this->option('max-polls') : null;
 
@@ -40,13 +48,13 @@ class TraceTailCommand extends Command
         $cursor = Carbon::now();
         $lookback = $cursor->copy()->subSeconds($interval * 2);
 
-        if (!$type || 'outgoing' === $type) {
+        if (!$direction || TraceDirection::Outgoing === $direction) {
             foreach ($outgoingModel::where('created_at', '>=', $lookback)->pluck('id') as $id) {
                 $seenIds[$id] = true;
             }
         }
 
-        if (!$type || 'incoming' === $type) {
+        if (!$direction || TraceDirection::Incoming === $direction) {
             foreach ($incomingModel::where('created_at', '>=', $lookback)->pluck('id') as $id) {
                 $seenIds[$id] = true;
             }
@@ -60,7 +68,7 @@ class TraceTailCommand extends Command
             // Look back 2x interval to catch late inserts from concurrent processes
             $since = $cursor->copy()->subSeconds($interval * 2);
 
-            if (!$type || 'outgoing' === $type) {
+            if (!$direction || TraceDirection::Outgoing === $direction) {
                 $traces = $this
                     ->applyFilters($outgoingModel::where('created_at', '>=', $since))
                     ->orderBy('created_at')
@@ -70,13 +78,13 @@ class TraceTailCommand extends Command
                 /** @var OutgoingRequestTrace $trace */
                 foreach ($traces as $trace) {
                     if (!isset($seenIds[$trace->id])) {
-                        $this->renderLine($trace, 'OUTGOING');
+                        $this->renderLine($trace, TraceDirection::Outgoing);
                         $seenIds[$trace->id] = true;
                     }
                 }
             }
 
-            if (!$type || 'incoming' === $type) {
+            if (!$direction || TraceDirection::Incoming === $direction) {
                 $traces = $this
                     ->applyFilters($incomingModel::where('created_at', '>=', $since))
                     ->orderBy('created_at')
@@ -86,7 +94,7 @@ class TraceTailCommand extends Command
                 /** @var IncomingRequestTrace $trace */
                 foreach ($traces as $trace) {
                     if (!isset($seenIds[$trace->id])) {
-                        $this->renderLine($trace, 'INCOMING');
+                        $this->renderLine($trace, TraceDirection::Incoming);
                         $seenIds[$trace->id] = true;
                     }
                 }
@@ -141,14 +149,14 @@ class TraceTailCommand extends Command
         return $query;
     }
 
-    private function renderLine(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): void
+    private function renderLine(IncomingRequestTrace|OutgoingRequestTrace $trace, TraceDirection $direction): void
     {
         $verbosity = $this->verbosity();
 
         $time = Carbon::parse($trace->created_at ?? now())->format('H:i:s');
         $status = $this->colorStatus($trace->status);
         $method = str_pad($trace->method ?? '—', 7);
-        $endpoint = $this->buildEndpoint($trace, $type);
+        $endpoint = $this->buildEndpoint($trace, $direction);
 
         if ($verbosity < 1) {
             $endpoint = Str::limit($endpoint, 55);
@@ -156,12 +164,12 @@ class TraceTailCommand extends Command
 
         $duration = null !== $trace->duration ? "{$trace->duration}ms" : '—';
         $channel = $trace->channel ? " [{$trace->channel}]" : '';
-        $extras = $this->buildExtras($trace, $type, $verbosity);
+        $extras = $this->buildExtras($trace, $direction, $verbosity);
 
-        $this->line("[{$time}] {$status} {$method} {$endpoint} {$duration} <fg=gray>[{$type}]{$channel}{$extras}</>");
+        $this->line("[{$time}] {$status} {$method} {$endpoint} {$duration} <fg=gray>[{$direction->value}]{$channel}{$extras}</>");
     }
 
-    private function buildExtras(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type, int $verbosity): string
+    private function buildExtras(IncomingRequestTrace|OutgoingRequestTrace $trace, TraceDirection $direction, int $verbosity): string
     {
         if ($verbosity < 1) {
             return '';
@@ -202,7 +210,7 @@ class TraceTailCommand extends Command
                 $parts[] = "server={$trace->server_identifier}";
             }
 
-            if ('OUTGOING' === $type && $trace->message) {
+            if (TraceDirection::Outgoing === $direction && $trace->message) {
                 $parts[] = 'msg=' . Str::limit($trace->message, 80);
             }
         }

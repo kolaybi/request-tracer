@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Commands\TraceTailCommand;
+use KolayBi\RequestTracer\Enums\TraceDirection;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 use Symfony\Component\Console\Input\ArrayInput;
@@ -29,13 +30,13 @@ function seedTailOutgoing(array $attributes = []): OutgoingRequestTrace
     ], $attributes));
 }
 
-function tailRenderLine(int $verbosity, IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): string
+function tailRenderLine(int $verbosity, IncomingRequestTrace|OutgoingRequestTrace $trace, TraceDirection $direction): string
 {
     $command = new TraceTailCommand();
     $buffered = new BufferedOutput($verbosity);
     $command->setOutput(new OutputStyle(new ArrayInput([]), $buffered));
 
-    new ReflectionMethod($command, 'renderLine')->invoke($command, $trace, $type);
+    new ReflectionMethod($command, 'renderLine')->invoke($command, $trace, $direction);
 
     return $buffered->fetch();
 }
@@ -213,43 +214,43 @@ it('renders colorStatus and renderLine correctly for all status branches', funct
     $trace = new OutgoingRequestTrace(
         ['host' => 'a.com', 'path' => '/ok', 'method' => 'GET', 'status' => 200, 'duration' => 42, 'channel' => null, 'created_at' => now()],
     );
-    $renderLine->invoke($command, $trace, 'OUTGOING');
+    $renderLine->invoke($command, $trace, TraceDirection::Outgoing);
 
     // 4xx status (yellow)
     $trace = new OutgoingRequestTrace(
         ['host' => 'b.com', 'path' => '/missing', 'method' => 'GET', 'status' => 404, 'duration' => 10, 'channel' => null, 'created_at' => now()],
     );
-    $renderLine->invoke($command, $trace, 'OUTGOING');
+    $renderLine->invoke($command, $trace, TraceDirection::Outgoing);
 
     // 5xx status (red)
     $trace = new OutgoingRequestTrace(
         ['host' => 'c.com', 'path' => '/error', 'method' => 'GET', 'status' => 500, 'duration' => 5000, 'channel' => null, 'created_at' => now()],
     );
-    $renderLine->invoke($command, $trace, 'OUTGOING');
+    $renderLine->invoke($command, $trace, TraceDirection::Outgoing);
 
     // null status (white dash)
     $trace = new OutgoingRequestTrace(
         ['host' => 'd.com', 'path' => '/null', 'method' => 'GET', 'status' => null, 'duration' => null, 'channel' => null, 'created_at' => now()],
     );
-    $renderLine->invoke($command, $trace, 'OUTGOING');
+    $renderLine->invoke($command, $trace, TraceDirection::Outgoing);
 
     // 1xx status (white)
     $trace = new OutgoingRequestTrace(
         ['host' => 'e.com', 'path' => '/info', 'method' => 'GET', 'status' => 100, 'duration' => 1, 'channel' => null, 'created_at' => now()],
     );
-    $renderLine->invoke($command, $trace, 'OUTGOING');
+    $renderLine->invoke($command, $trace, TraceDirection::Outgoing);
 
     // With channel
     $trace = new OutgoingRequestTrace(
         ['host' => 'f.com', 'path' => '/pay', 'method' => 'POST', 'status' => 200, 'duration' => 100, 'channel' => 'payments', 'created_at' => now()],
     );
-    $renderLine->invoke($command, $trace, 'OUTGOING');
+    $renderLine->invoke($command, $trace, TraceDirection::Outgoing);
 
     // Incoming trace (no channel)
     $inTrace = new IncomingRequestTrace(
         ['host' => 'g.test', 'path' => '/dashboard', 'method' => 'GET', 'status' => 200, 'duration' => 50, 'created_at' => now()],
     );
-    $renderLine->invoke($command, $inTrace, 'INCOMING');
+    $renderLine->invoke($command, $inTrace, TraceDirection::Incoming);
 
     $output = $buffered->fetch();
 
@@ -325,7 +326,7 @@ it('renders channel for incoming traces in tail output', function () {
         'host'   => 'app.test', 'path' => '/api', 'method' => 'GET',
         'status' => 200, 'duration' => 50, 'channel' => 'mobile', 'created_at' => now(),
     ]);
-    $renderLine->invoke($command, $trace, 'INCOMING');
+    $renderLine->invoke($command, $trace, TraceDirection::Incoming);
 
     $output = $buffered->fetch();
 
@@ -338,7 +339,7 @@ it('truncates long endpoints at default verbosity', function () {
         'method' => 'GET', 'status' => 200, 'duration' => 10, 'created_at' => now(),
     ]);
 
-    $output = tailRenderLine(OutputInterface::VERBOSITY_NORMAL, $trace, 'OUTGOING');
+    $output = tailRenderLine(OutputInterface::VERBOSITY_NORMAL, $trace, TraceDirection::Outgoing);
 
     expect($output)
         ->toContain('...')
@@ -353,7 +354,7 @@ it('renders the full endpoint and record id at -v', function () {
         'method' => 'GET', 'status' => 200, 'duration' => 10, 'created_at' => now(),
     ]);
 
-    $output = tailRenderLine(OutputInterface::VERBOSITY_VERBOSE, $trace, 'OUTGOING');
+    $output = tailRenderLine(OutputInterface::VERBOSITY_VERBOSE, $trace, TraceDirection::Outgoing);
 
     expect($output)
         ->toContain($longPath)
@@ -368,7 +369,7 @@ it('does not render identity context at -v', function () {
         'created_at' => now(),
     ]);
 
-    $output = tailRenderLine(OutputInterface::VERBOSITY_VERBOSE, $trace, 'OUTGOING');
+    $output = tailRenderLine(OutputInterface::VERBOSITY_VERBOSE, $trace, TraceDirection::Outgoing);
 
     expect($output)
         ->not->toContain('trace=')
@@ -385,7 +386,7 @@ it('renders identity context at -vv', function () {
         'created_at' => now(),
     ]);
 
-    $output = tailRenderLine(OutputInterface::VERBOSITY_VERY_VERBOSE, $trace, 'OUTGOING');
+    $output = tailRenderLine(OutputInterface::VERBOSITY_VERY_VERBOSE, $trace, TraceDirection::Outgoing);
 
     expect($output)
         ->toContain('trace=corr-1')
@@ -401,7 +402,7 @@ it('omits null identity fields at -vv', function () {
         'created_at' => now(),
     ]);
 
-    $output = tailRenderLine(OutputInterface::VERBOSITY_VERY_VERBOSE, $trace, 'OUTGOING');
+    $output = tailRenderLine(OutputInterface::VERBOSITY_VERY_VERBOSE, $trace, TraceDirection::Outgoing);
 
     expect($output)
         ->toContain('id=01HZTAILVERBOSEID000000000')
@@ -420,7 +421,7 @@ it('does not render size and server context at -vv', function () {
         'created_at'    => now(),
     ]);
 
-    $output = tailRenderLine(OutputInterface::VERBOSITY_VERY_VERBOSE, $trace, 'OUTGOING');
+    $output = tailRenderLine(OutputInterface::VERBOSITY_VERY_VERBOSE, $trace, TraceDirection::Outgoing);
 
     expect($output)
         ->not->toContain('req=')
@@ -438,7 +439,7 @@ it('renders sizes, server and message at -vvv', function () {
         'created_at'    => now(),
     ]);
 
-    $output = tailRenderLine(OutputInterface::VERBOSITY_DEBUG, $trace, 'OUTGOING');
+    $output = tailRenderLine(OutputInterface::VERBOSITY_DEBUG, $trace, TraceDirection::Outgoing);
 
     expect($output)
         ->toContain('req=123B')
@@ -455,7 +456,7 @@ it('omits message and null size fields for incoming traces at -vvv', function ()
         'created_at' => now(),
     ]);
 
-    $output = tailRenderLine(OutputInterface::VERBOSITY_DEBUG, $trace, 'INCOMING');
+    $output = tailRenderLine(OutputInterface::VERBOSITY_DEBUG, $trace, TraceDirection::Incoming);
 
     expect($output)
         ->toContain('id=01HZTAILVERBOSEID000000000')
@@ -601,6 +602,12 @@ it('filters channel case insensitively', function () {
     expect($buffer->fetch())
         ->toContain('payments-channel.example.com')
         ->not->toContain('other-channel.example.com');
+});
+
+it('rejects an invalid type value', function () {
+    $this->artisan('request-tracer:tail', ['--max-polls' => 1, '--type' => 'sideways'])
+        ->expectsOutputToContain('Invalid type')
+        ->assertExitCode(1);
 });
 
 it('filters host case insensitively', function () {

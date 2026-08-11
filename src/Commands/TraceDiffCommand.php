@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
 use KolayBi\RequestTracer\Commands\Concerns\QueriesArchiveTables;
+use KolayBi\RequestTracer\Enums\TraceDirection;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
@@ -48,7 +49,7 @@ class TraceDiffCommand extends Command
         $trace = $this->findAcrossTables($outgoingModel, $id);
 
         if ($trace) {
-            return ['trace' => $trace, 'type' => 'OUTGOING'];
+            return ['trace' => $trace, 'type' => TraceDirection::Outgoing];
         }
 
         $incomingModel = config('kolaybi.request-tracer.incoming.model', IncomingRequestTrace::class);
@@ -57,7 +58,7 @@ class TraceDiffCommand extends Command
         $trace = $this->findAcrossTables($incomingModel, $id);
 
         if ($trace) {
-            return ['trace' => $trace, 'type' => 'INCOMING'];
+            return ['trace' => $trace, 'type' => TraceDirection::Incoming];
         }
 
         $this->error("Trace not found: {$id}");
@@ -70,8 +71,8 @@ class TraceDiffCommand extends Command
         $t1 = $r1['trace'];
         $t2 = $r2['trace'];
 
-        $this->components->twoColumnDetail('<fg=gray>Trace 1</>', "{$t1->id} [{$r1['type']}]");
-        $this->components->twoColumnDetail('<fg=gray>Trace 2</>', "{$t2->id} [{$r2['type']}]");
+        $this->components->twoColumnDetail('<fg=gray>Trace 1</>', "{$t1->id} [{$r1['type']->value}]");
+        $this->components->twoColumnDetail('<fg=gray>Trace 2</>', "{$t2->id} [{$r2['type']->value}]");
         $this->newLine();
 
         $fields = [

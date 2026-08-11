@@ -2,18 +2,19 @@
 
 namespace KolayBi\RequestTracer\Commands\Concerns;
 
+use KolayBi\RequestTracer\Enums\TraceDirection;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
 trait BuildsEndpoint
 {
-    private function buildEndpoint(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): string
+    private function buildEndpoint(IncomingRequestTrace|OutgoingRequestTrace $trace, TraceDirection $direction): string
     {
         $protocol = $trace->protocol ?? null;
         $host = $trace->host;
         $path = $trace->path;
         $query = $trace->query;
-        $route = 'INCOMING' === $type ? $trace->route : null;
+        $route = TraceDirection::Incoming === $direction ? $trace->route : null;
 
         $url = '';
 

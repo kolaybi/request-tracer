@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
 use KolayBi\RequestTracer\Commands\Concerns\QueriesArchiveTables;
+use KolayBi\RequestTracer\Enums\TraceDirection;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
@@ -30,8 +31,8 @@ class TraceWaterfallCommand extends Command
         $outgoingTraces = $this->queryAcrossTables($outgoingModel, 'trace_id', $traceId);
 
         $allTraces = $incomingTraces->toBase()
-            ->map(fn($trace) => ['trace' => $trace, 'type' => 'INCOMING'])
-            ->merge($outgoingTraces->map(fn($trace) => ['trace' => $trace, 'type' => 'OUTGOING']))
+            ->map(fn($trace) => ['trace' => $trace, 'type' => TraceDirection::Incoming])
+            ->merge($outgoingTraces->map(fn($trace) => ['trace' => $trace, 'type' => TraceDirection::Outgoing]))
             ->sortBy(fn($item) => $item['trace']->start ?? '')
             ->values();
 
@@ -79,14 +80,14 @@ class TraceWaterfallCommand extends Command
         );
     }
 
-    private function formatRow(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type, int $index): array
+    private function formatRow(IncomingRequestTrace|OutgoingRequestTrace $trace, TraceDirection $direction, int $index): array
     {
         return [
             $index,
             $trace->id ?? '—',
-            $type,
+            $direction->value,
             $trace->method ?? '—',
-            $this->buildEndpoint($trace, $type),
+            $this->buildEndpoint($trace, $direction),
             $trace->status ?? '—',
             null !== $trace->duration ? "{$trace->duration}ms" : '—',
             $trace->channel ?? '—',

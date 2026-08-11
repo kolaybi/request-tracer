@@ -4,6 +4,7 @@ namespace KolayBi\RequestTracer\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use KolayBi\RequestTracer\Enums\TraceDirection;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
@@ -17,29 +18,37 @@ class TraceStatsCommand extends Command
 
     public function handle(): int
     {
+        $direction = TraceDirection::tryFromInput($type = $this->option('type'));
+
+        if ($type && !$direction) {
+            $this->error("Invalid type: {$type}. Use incoming or outgoing.");
+
+            return self::FAILURE;
+        }
+
         $hours = max(1, (int) $this->option('hours'));
         $cutoff = now()->subHours($hours);
-        $type = $this->option('type');
 
         $this->components->twoColumnDetail('<fg=gray>Time Window</>', "Last {$hours} hour(s)");
         $this->components->twoColumnDetail('<fg=gray>Since</>', $cutoff->toDateTimeString());
         $this->newLine();
 
-        if (!$type || 'outgoing' === $type) {
+        if (!$direction || TraceDirection::Outgoing === $direction) {
             $outgoingModel = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
-            $this->renderStats('Outgoing', $outgoingModel::where('created_at', '>=', $cutoff));
+            $this->renderStats(TraceDirection::Outgoing, $outgoingModel::where('created_at', '>=', $cutoff));
         }
 
-        if (!$type || 'incoming' === $type) {
+        if (!$direction || TraceDirection::Incoming === $direction) {
             $incomingModel = config('kolaybi.request-tracer.incoming.model', IncomingRequestTrace::class);
-            $this->renderStats('Incoming', $incomingModel::where('created_at', '>=', $cutoff));
+            $this->renderStats(TraceDirection::Incoming, $incomingModel::where('created_at', '>=', $cutoff));
         }
 
         return self::SUCCESS;
     }
 
-    private function renderStats(string $label, Builder $query): void
+    private function renderStats(TraceDirection $direction, Builder $query): void
     {
+        $label = $direction->name;
         $total = $query->count();
 
         if (0 === $total) {

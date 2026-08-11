@@ -225,3 +225,17 @@ it('shows channel column for incoming traces in search results', function () {
 
     expect($output)->toContain('jet');
 });
+
+it('filters type case insensitively', function () {
+    seedOutgoing(['host' => 'uppercase-search.example.com']);
+
+    $this->artisan('request-tracer:search', ['--type' => 'OUTGOING'])
+        ->expectsOutputToContain('uppercase-search.example.com')
+        ->assertExitCode(0);
+});
+
+it('rejects an invalid type value', function () {
+    $this->artisan('request-tracer:search', ['--type' => 'sideways'])
+        ->expectsOutputToContain('Invalid type')
+        ->assertExitCode(1);
+});

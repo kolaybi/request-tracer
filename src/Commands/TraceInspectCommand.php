@@ -5,6 +5,7 @@ namespace KolayBi\RequestTracer\Commands;
 use Illuminate\Console\Command;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
 use KolayBi\RequestTracer\Commands\Concerns\QueriesArchiveTables;
+use KolayBi\RequestTracer\Enums\TraceDirection;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -27,11 +28,11 @@ class TraceInspectCommand extends Command
 
         /** @var IncomingRequestTrace|OutgoingRequestTrace|null $trace */
         $trace = $this->findAcrossTables($outgoingModel, $id);
-        $type = 'OUTGOING';
+        $direction = TraceDirection::Outgoing;
 
         if (!$trace) {
             $trace = $this->findAcrossTables($incomingModel, $id);
-            $type = 'INCOMING';
+            $direction = TraceDirection::Incoming;
         }
 
         if (!$trace) {
@@ -40,33 +41,33 @@ class TraceInspectCommand extends Command
             return self::FAILURE;
         }
 
-        $this->renderMetadata($trace, $type);
+        $this->renderMetadata($trace, $direction);
 
         if ($this->verbosity() >= 1) {
             $this->renderHeaders($trace);
         }
 
         if ($this->verbosity() >= 2) {
-            $this->renderBodies($trace, $type);
+            $this->renderBodies($trace, $direction);
         }
 
         return self::SUCCESS;
     }
 
-    private function renderMetadata(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): void
+    private function renderMetadata(IncomingRequestTrace|OutgoingRequestTrace $trace, TraceDirection $direction): void
     {
         $tenantColumn = config('kolaybi.request-tracer.tenant_column', 'tenant_id');
 
-        $this->components->twoColumnDetail('<fg=gray>Type</>', $type);
+        $this->components->twoColumnDetail('<fg=gray>Type</>', $direction->value);
         $this->components->twoColumnDetail('<fg=gray>Method</>', $trace->method ?? '—');
-        $this->components->twoColumnDetail('<fg=gray>Endpoint</>', $this->buildEndpoint($trace, $type));
+        $this->components->twoColumnDetail('<fg=gray>Endpoint</>', $this->buildEndpoint($trace, $direction));
         $this->components->twoColumnDetail('<fg=gray>Status</>', $this->colorStatus($trace->status));
         $this->components->twoColumnDetail('<fg=gray>Duration</>', null !== $trace->duration ? "{$trace->duration}ms" : '—');
         $this->components->twoColumnDetail('<fg=gray>Start</>', $trace->start ?? '—');
         $this->components->twoColumnDetail('<fg=gray>End</>', $trace->end ?? '—');
         $this->components->twoColumnDetail('<fg=gray>Channel</>', $trace->channel ?? '—');
 
-        if ('OUTGOING' === $type) {
+        if (TraceDirection::Outgoing === $direction) {
             $this->components->twoColumnDetail('<fg=gray>Protocol</>', $trace->protocol ?? '—');
         }
 
@@ -110,7 +111,7 @@ class TraceInspectCommand extends Command
         }
     }
 
-    private function renderBodies(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): void
+    private function renderBodies(IncomingRequestTrace|OutgoingRequestTrace $trace, TraceDirection $direction): void
     {
         $full = $this->option('full');
         $maxLines = match (true) {
@@ -127,7 +128,7 @@ class TraceInspectCommand extends Command
         $this->components->twoColumnDetail('<fg=yellow>Response Body</>');
         $this->renderBody($trace->response_body, $maxLines);
 
-        if ($this->verbosity() >= 3 && 'OUTGOING' === $type) {
+        if ($this->verbosity() >= 3 && TraceDirection::Outgoing === $direction) {
             $this->renderOutgoingExtras($trace);
         }
     }
