@@ -269,6 +269,48 @@ php artisan request-tracer:tail -vvv  # + request/response sizes, server, error 
 
 `--interval=N` controls the poll interval in seconds (default 2), and the record id shown at `-v` can be fed straight into `request-tracer:inspect`.
 
+### Search
+
+Query stored traces with filters:
+
+```bash
+php artisan request-tracer:search --status=5xx --type=outgoing
+php artisan request-tracer:search --host="*.bank.example.com" --path="/api/orders*"
+php artisan request-tracer:search --method=POST --channel=payments
+php artisan request-tracer:search --from="2026-08-01" --to="2026-08-11 12:00:00"
+php artisan request-tracer:search --min-duration=1000 --limit=100
+```
+
+Results are rendered newest-first in a table (ID, type, method, endpoint, status, duration, channel, created). `--status` accepts an exact code or a range like `5xx`, `--host` and `--path` support `*` wildcards, and `--limit` caps the row count (default 50). Both incoming and outgoing tables are searched unless `--type` narrows it. The ID column feeds straight into `request-tracer:inspect` and `request-tracer:diff`.
+
+### Stats
+
+Aggregate statistics for a time window (default: last 24 hours):
+
+```bash
+php artisan request-tracer:stats
+php artisan request-tracer:stats --hours=6 --type=outgoing
+```
+
+Shows total requests, 2xx/4xx/5xx counts, 5xx error rate, and avg/min/max durations, plus the top 5 hosts and top 5 channels — reported separately for incoming and outgoing traces.
+
+### Diff
+
+Compare two traces side-by-side, with progressive verbosity like `inspect`:
+
+```bash
+# Metadata diff (method, endpoint, status, duration, sizes)
+php artisan request-tracer:diff 01JEXAMPLE111 01JEXAMPLE222
+
+# + request/response header diff
+php artisan request-tracer:diff 01JEXAMPLE111 01JEXAMPLE222 -v
+
+# + request/response body diff with similarity percentage
+php artisan request-tracer:diff 01JEXAMPLE111 01JEXAMPLE222 -vv
+```
+
+Identical fields print once; differing fields are highlighted as `old → new`. Added, removed, and changed headers are marked `+` / `-` / `~`. Both IDs are resolved across incoming, outgoing, and dated archive tables, so a current trace can be compared against a rotated one — useful for "why does this request behave differently than last week's?"
+
 ## Data Retention
 
 ### Table Rotation (recommended)
