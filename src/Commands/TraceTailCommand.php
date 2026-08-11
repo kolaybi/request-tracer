@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
+use KolayBi\RequestTracer\Commands\Concerns\ColorsStatus;
+use KolayBi\RequestTracer\Enums\TraceDirection;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -14,6 +16,21 @@ use Symfony\Component\Console\Output\OutputInterface;
 class TraceTailCommand extends Command
 {
     use BuildsEndpoint;
+    use ColorsStatus;
+
+    private const int MESSAGE_DISPLAY_LIMIT = 80;
+
+    private const int METHOD_PAD_WIDTH = 7;
+
+    private const int MIN_INTERVAL_SECONDS = 1;
+
+    private const int MAX_INTERVAL_SECONDS = 60;
+
+    private const int LOOKBACK_MULTIPLIER = 2;
+
+    private const int SEEN_IDS_PRUNE_THRESHOLD = 1000;
+
+    private const int SEEN_IDS_PRUNE_KEEP = 500;
 
     protected $signature = 'request-tracer:tail
         {--type= : Filter by type (incoming or outgoing)}
@@ -28,8 +45,15 @@ class TraceTailCommand extends Command
 
     public function handle(): int
     {
-        $type = $this->option('type') ? strtolower($this->option('type')) : null;
-        $interval = max(1, min(60, (int) $this->option('interval')));
+        $direction = TraceDirection::tryFromInput($type = $this->option('type'));
+
+        if ($type && !$direction) {
+            $this->error("Invalid type: {$type}. Use incoming or outgoing.");
+
+            return self::FAILURE;
+        }
+
+        $interval = max(self::MIN_INTERVAL_SECONDS, min(self::MAX_INTERVAL_SECONDS, (int) $this->option('interval')));
         $maxPolls = $this->option('max-polls') ? (int) $this->option('max-polls') : null;
 
         $outgoingModel = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
@@ -38,15 +62,15 @@ class TraceTailCommand extends Command
         // Pre-populate seen IDs within the lookback window so pre-existing traces are never shown
         $seenIds = [];
         $cursor = Carbon::now();
-        $lookback = $cursor->copy()->subSeconds($interval * 2);
+        $lookback = $cursor->copy()->subSeconds($interval * self::LOOKBACK_MULTIPLIER);
 
-        if (!$type || 'outgoing' === $type) {
+        if (!$direction || TraceDirection::Outgoing === $direction) {
             foreach ($outgoingModel::where('created_at', '>=', $lookback)->pluck('id') as $id) {
                 $seenIds[$id] = true;
             }
         }
 
-        if (!$type || 'incoming' === $type) {
+        if (!$direction || TraceDirection::Incoming === $direction) {
             foreach ($incomingModel::where('created_at', '>=', $lookback)->pluck('id') as $id) {
                 $seenIds[$id] = true;
             }
@@ -57,10 +81,10 @@ class TraceTailCommand extends Command
         $polls = 0;
 
         while (true) {
-            // Look back 2x interval to catch late inserts from concurrent processes
-            $since = $cursor->copy()->subSeconds($interval * 2);
+            // Look back beyond the interval to catch late inserts from concurrent processes
+            $since = $cursor->copy()->subSeconds($interval * self::LOOKBACK_MULTIPLIER);
 
-            if (!$type || 'outgoing' === $type) {
+            if (!$direction || TraceDirection::Outgoing === $direction) {
                 $traces = $this
                     ->applyFilters($outgoingModel::where('created_at', '>=', $since))
                     ->orderBy('created_at')
@@ -70,13 +94,13 @@ class TraceTailCommand extends Command
                 /** @var OutgoingRequestTrace $trace */
                 foreach ($traces as $trace) {
                     if (!isset($seenIds[$trace->id])) {
-                        $this->renderLine($trace, 'OUTGOING');
+                        $this->renderLine($trace, TraceDirection::Outgoing);
                         $seenIds[$trace->id] = true;
                     }
                 }
             }
 
-            if (!$type || 'incoming' === $type) {
+            if (!$direction || TraceDirection::Incoming === $direction) {
                 $traces = $this
                     ->applyFilters($incomingModel::where('created_at', '>=', $since))
                     ->orderBy('created_at')
@@ -86,7 +110,7 @@ class TraceTailCommand extends Command
                 /** @var IncomingRequestTrace $trace */
                 foreach ($traces as $trace) {
                     if (!isset($seenIds[$trace->id])) {
-                        $this->renderLine($trace, 'INCOMING');
+                        $this->renderLine($trace, TraceDirection::Incoming);
                         $seenIds[$trace->id] = true;
                     }
                 }
@@ -94,9 +118,9 @@ class TraceTailCommand extends Command
 
             $cursor = Carbon::now();
 
-            // Prune seen set to prevent memory growth — keep last 500
-            if (count($seenIds) > 1000) {
-                $seenIds = array_slice($seenIds, -500, null, true);
+            // Prune seen set to prevent memory growth
+            if (count($seenIds) > self::SEEN_IDS_PRUNE_THRESHOLD) {
+                $seenIds = array_slice($seenIds, -self::SEEN_IDS_PRUNE_KEEP, null, true);
             }
 
             $polls++;
@@ -141,27 +165,27 @@ class TraceTailCommand extends Command
         return $query;
     }
 
-    private function renderLine(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): void
+    private function renderLine(IncomingRequestTrace|OutgoingRequestTrace $trace, TraceDirection $direction): void
     {
         $verbosity = $this->verbosity();
 
         $time = Carbon::parse($trace->created_at ?? now())->format('H:i:s');
         $status = $this->colorStatus($trace->status);
-        $method = str_pad($trace->method ?? '—', 7);
-        $endpoint = $this->buildEndpoint($trace, $type);
+        $method = str_pad($trace->method ?? '—', self::METHOD_PAD_WIDTH);
+        $endpoint = $this->buildEndpoint($trace, $direction);
 
         if ($verbosity < 1) {
-            $endpoint = Str::limit($endpoint, 55);
+            $endpoint = Str::limit($endpoint, self::ENDPOINT_DISPLAY_LIMIT);
         }
 
         $duration = null !== $trace->duration ? "{$trace->duration}ms" : '—';
         $channel = $trace->channel ? " [{$trace->channel}]" : '';
-        $extras = $this->buildExtras($trace, $type, $verbosity);
+        $extras = $this->buildExtras($trace, $direction, $verbosity);
 
-        $this->line("[{$time}] {$status} {$method} {$endpoint} {$duration} <fg=gray>[{$type}]{$channel}{$extras}</>");
+        $this->line("[{$time}] {$status} {$method} {$endpoint} {$duration} <fg=gray>[{$direction->value}]{$channel}{$extras}</>");
     }
 
-    private function buildExtras(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type, int $verbosity): string
+    private function buildExtras(IncomingRequestTrace|OutgoingRequestTrace $trace, TraceDirection $direction, int $verbosity): string
     {
         if ($verbosity < 1) {
             return '';
@@ -202,8 +226,8 @@ class TraceTailCommand extends Command
                 $parts[] = "server={$trace->server_identifier}";
             }
 
-            if ('OUTGOING' === $type && $trace->message) {
-                $parts[] = 'msg=' . Str::limit($trace->message, 80);
+            if (TraceDirection::Outgoing === $direction && $trace->message) {
+                $parts[] = 'msg=' . Str::limit($trace->message, self::MESSAGE_DISPLAY_LIMIT);
             }
         }
 
@@ -218,26 +242,5 @@ class TraceTailCommand extends Command
             OutputInterface::VERBOSITY_DEBUG        => 3,
             default                                 => 0,
         };
-    }
-
-    private function colorStatus(?int $status): string
-    {
-        if (null === $status) {
-            return '<fg=white>—</>';
-        }
-
-        if ($status >= 500) {
-            return "<fg=red>{$status}</>";
-        }
-
-        if ($status >= 400) {
-            return "<fg=yellow>{$status}</>";
-        }
-
-        if ($status >= 200 && $status < 300) {
-            return "<fg=green>{$status}</>";
-        }
-
-        return "<fg=white>{$status}</>";
     }
 }

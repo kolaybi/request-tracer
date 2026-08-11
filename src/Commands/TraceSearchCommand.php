@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
+use KolayBi\RequestTracer\Enums\TraceDirection;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
@@ -31,29 +32,36 @@ class TraceSearchCommand extends Command
 
     public function handle(): int
     {
-        $type = $this->option('type');
+        $direction = TraceDirection::tryFromInput($type = $this->option('type'));
+
+        if ($type && !$direction) {
+            $this->error("Invalid type: {$type}. Use incoming or outgoing.");
+
+            return self::FAILURE;
+        }
+
         $limit = max(1, (int) $this->option('limit'));
         $results = collect();
 
-        if (!$type || 'outgoing' === $type) {
+        if (!$direction || TraceDirection::Outgoing === $direction) {
             $outgoingModel = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
             $results = $results->merge(
                 $this->buildQuery($outgoingModel::query())
                     ->latest('created_at')
                     ->limit($limit)
                     ->get()
-                    ->map(fn($trace) => ['trace' => $trace, 'type' => 'OUTGOING']),
+                    ->map(fn($trace) => ['trace' => $trace, 'type' => TraceDirection::Outgoing]),
             );
         }
 
-        if (!$type || 'incoming' === $type) {
+        if (!$direction || TraceDirection::Incoming === $direction) {
             $incomingModel = config('kolaybi.request-tracer.incoming.model', IncomingRequestTrace::class);
             $results = $results->merge(
                 $this->buildQuery($incomingModel::query())
                     ->latest('created_at')
                     ->limit($limit)
                     ->get()
-                    ->map(fn($trace) => ['trace' => $trace, 'type' => 'INCOMING']),
+                    ->map(fn($trace) => ['trace' => $trace, 'type' => TraceDirection::Incoming]),
             );
         }
 
@@ -138,13 +146,13 @@ class TraceSearchCommand extends Command
         );
     }
 
-    private function formatRow(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): array
+    private function formatRow(IncomingRequestTrace|OutgoingRequestTrace $trace, TraceDirection $direction): array
     {
         return [
             $trace->id ?? '—',
-            $type,
+            $direction->value,
             $trace->method ?? '—',
-            Str::limit($this->buildEndpoint($trace, $type), 60),
+            Str::limit($this->buildEndpoint($trace, $direction), self::ENDPOINT_DISPLAY_LIMIT),
             $trace->status ?? '—',
             null !== $trace->duration ? "{$trace->duration}ms" : '—',
             $trace->channel ?? '—',

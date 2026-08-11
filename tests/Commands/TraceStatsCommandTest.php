@@ -216,3 +216,17 @@ it('shows top channels for incoming traces', function () {
         ->toContain('mobile')
         ->toContain('web');
 });
+
+it('filters type case insensitively', function () {
+    createOutgoing(['host' => 'uppercase-stats.example.com']);
+
+    $this->artisan('request-tracer:stats', ['--type' => 'OUTGOING'])
+        ->expectsOutputToContain('uppercase-stats.example.com')
+        ->assertExitCode(0);
+});
+
+it('rejects an invalid type value', function () {
+    $this->artisan('request-tracer:stats', ['--type' => 'sideways'])
+        ->expectsOutputToContain('Invalid type')
+        ->assertExitCode(1);
+});
