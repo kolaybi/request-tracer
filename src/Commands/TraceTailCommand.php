@@ -18,6 +18,22 @@ class TraceTailCommand extends Command
     use BuildsEndpoint;
     use ColorsStatus;
 
+    private const int ENDPOINT_DISPLAY_LIMIT = 55;
+
+    private const int MESSAGE_DISPLAY_LIMIT = 80;
+
+    private const int METHOD_PAD_WIDTH = 7;
+
+    private const int MIN_INTERVAL_SECONDS = 1;
+
+    private const int MAX_INTERVAL_SECONDS = 60;
+
+    private const int LOOKBACK_MULTIPLIER = 2;
+
+    private const int SEEN_IDS_PRUNE_THRESHOLD = 1000;
+
+    private const int SEEN_IDS_PRUNE_KEEP = 500;
+
     protected $signature = 'request-tracer:tail
         {--type= : Filter by type (incoming or outgoing)}
         {--host= : Filter by host (supports * wildcards)}
@@ -39,7 +55,7 @@ class TraceTailCommand extends Command
             return self::FAILURE;
         }
 
-        $interval = max(1, min(60, (int) $this->option('interval')));
+        $interval = max(self::MIN_INTERVAL_SECONDS, min(self::MAX_INTERVAL_SECONDS, (int) $this->option('interval')));
         $maxPolls = $this->option('max-polls') ? (int) $this->option('max-polls') : null;
 
         $outgoingModel = config('kolaybi.request-tracer.outgoing.model', OutgoingRequestTrace::class);
@@ -48,7 +64,7 @@ class TraceTailCommand extends Command
         // Pre-populate seen IDs within the lookback window so pre-existing traces are never shown
         $seenIds = [];
         $cursor = Carbon::now();
-        $lookback = $cursor->copy()->subSeconds($interval * 2);
+        $lookback = $cursor->copy()->subSeconds($interval * self::LOOKBACK_MULTIPLIER);
 
         if (!$direction || TraceDirection::Outgoing === $direction) {
             foreach ($outgoingModel::where('created_at', '>=', $lookback)->pluck('id') as $id) {
@@ -67,8 +83,8 @@ class TraceTailCommand extends Command
         $polls = 0;
 
         while (true) {
-            // Look back 2x interval to catch late inserts from concurrent processes
-            $since = $cursor->copy()->subSeconds($interval * 2);
+            // Look back beyond the interval to catch late inserts from concurrent processes
+            $since = $cursor->copy()->subSeconds($interval * self::LOOKBACK_MULTIPLIER);
 
             if (!$direction || TraceDirection::Outgoing === $direction) {
                 $traces = $this
@@ -104,9 +120,9 @@ class TraceTailCommand extends Command
 
             $cursor = Carbon::now();
 
-            // Prune seen set to prevent memory growth — keep last 500
-            if (count($seenIds) > 1000) {
-                $seenIds = array_slice($seenIds, -500, null, true);
+            // Prune seen set to prevent memory growth
+            if (count($seenIds) > self::SEEN_IDS_PRUNE_THRESHOLD) {
+                $seenIds = array_slice($seenIds, -self::SEEN_IDS_PRUNE_KEEP, null, true);
             }
 
             $polls++;
@@ -157,11 +173,11 @@ class TraceTailCommand extends Command
 
         $time = Carbon::parse($trace->created_at ?? now())->format('H:i:s');
         $status = $this->colorStatus($trace->status);
-        $method = str_pad($trace->method ?? '—', 7);
+        $method = str_pad($trace->method ?? '—', self::METHOD_PAD_WIDTH);
         $endpoint = $this->buildEndpoint($trace, $direction);
 
         if ($verbosity < 1) {
-            $endpoint = Str::limit($endpoint, 55);
+            $endpoint = Str::limit($endpoint, self::ENDPOINT_DISPLAY_LIMIT);
         }
 
         $duration = null !== $trace->duration ? "{$trace->duration}ms" : '—';
@@ -213,7 +229,7 @@ class TraceTailCommand extends Command
             }
 
             if (TraceDirection::Outgoing === $direction && $trace->message) {
-                $parts[] = 'msg=' . Str::limit($trace->message, 80);
+                $parts[] = 'msg=' . Str::limit($trace->message, self::MESSAGE_DISPLAY_LIMIT);
             }
         }
 

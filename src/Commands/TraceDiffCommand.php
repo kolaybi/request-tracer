@@ -15,6 +15,8 @@ class TraceDiffCommand extends Command
     use BuildsEndpoint;
     use QueriesArchiveTables;
 
+    private const int BODY_PREVIEW_LIMIT = 200;
+
     protected $signature = 'request-tracer:diff {id1} {id2}';
 
     protected $description = 'Compare two traces side-by-side';
@@ -223,8 +225,8 @@ class TraceDiffCommand extends Command
         similar_text($b1, $b2, $percent);
         $this->line(sprintf('  Similarity: %.1f%%', $percent));
 
-        $this->line('  <fg=gray>[1]</> ' . Str::limit($b1, 200));
-        $this->line('  <fg=gray>[2]</> ' . Str::limit($b2, 200));
+        $this->line('  <fg=gray>[1]</> ' . Str::limit($b1, self::BODY_PREVIEW_LIMIT));
+        $this->line('  <fg=gray>[2]</> ' . Str::limit($b2, self::BODY_PREVIEW_LIMIT));
         $this->newLine();
     }
 }

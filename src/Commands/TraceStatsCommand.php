@@ -10,6 +10,8 @@ use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
 
 class TraceStatsCommand extends Command
 {
+    private const int TOP_LIMIT = 5;
+
     protected $signature = 'request-tracer:stats
         {--hours=24 : Time window in hours}
         {--type= : Filter by type (incoming or outgoing)}';
@@ -88,7 +90,7 @@ class TraceStatsCommand extends Command
             ->selectRaw('host, COUNT(*) as cnt')
             ->groupBy('host')
             ->orderByDesc('cnt')
-            ->limit(5)
+            ->limit(self::TOP_LIMIT)
             ->get();
 
         if ($topHosts->isNotEmpty()) {
@@ -106,7 +108,7 @@ class TraceStatsCommand extends Command
             ->whereNotNull('channel')
             ->groupBy('channel')
             ->orderByDesc('cnt')
-            ->limit(5)
+            ->limit(self::TOP_LIMIT)
             ->get();
 
         if ($topChannels->isNotEmpty()) {

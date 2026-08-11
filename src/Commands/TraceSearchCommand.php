@@ -15,6 +15,8 @@ class TraceSearchCommand extends Command
 {
     use BuildsEndpoint;
 
+    private const int ENDPOINT_DISPLAY_LIMIT = 60;
+
     protected $signature = 'request-tracer:search
         {--host= : Filter by host (supports * wildcards)}
         {--status= : Filter by status code (e.g. 500, 4xx, 5xx)}
@@ -152,7 +154,7 @@ class TraceSearchCommand extends Command
             $trace->id ?? '—',
             $direction->value,
             $trace->method ?? '—',
-            Str::limit($this->buildEndpoint($trace, $direction), 60),
+            Str::limit($this->buildEndpoint($trace, $direction), self::ENDPOINT_DISPLAY_LIMIT),
             $trace->status ?? '—',
             null !== $trace->duration ? "{$trace->duration}ms" : '—',
             $trace->channel ?? '—',

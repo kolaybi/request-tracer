@@ -17,6 +17,10 @@ class TraceInspectCommand extends Command
     use ColorsStatus;
     use QueriesArchiveTables;
 
+    private const int BODY_PREVIEW_LINES = 20;
+
+    private const int BODY_PREVIEW_LINES_DEBUG = 40;
+
     protected $signature = 'request-tracer:inspect {id} {--full}';
 
     protected $description = 'Inspect a single trace record by its ULID';
@@ -118,8 +122,8 @@ class TraceInspectCommand extends Command
         $full = $this->option('full');
         $maxLines = match (true) {
             $full                   => null,
-            $this->verbosity() >= 3 => 40,
-            default                 => 20,
+            $this->verbosity() >= 3 => self::BODY_PREVIEW_LINES_DEBUG,
+            default                 => self::BODY_PREVIEW_LINES,
         };
 
         $this->newLine();
