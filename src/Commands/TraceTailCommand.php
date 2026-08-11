@@ -19,6 +19,7 @@ class TraceTailCommand extends Command
         {--type= : Filter by type (incoming or outgoing)}
         {--host= : Filter by host (supports * wildcards)}
         {--status= : Filter by status code (e.g. 500, 4xx, 5xx)}
+        {--method= : Filter by HTTP method (comma-separated for multiple, e.g. GET,POST)}
         {--channel= : Filter by channel}
         {--interval=2 : Poll interval in seconds}
         {--max-polls= : Stop after N polls (for testing)}';
@@ -123,6 +124,12 @@ class TraceTailCommand extends Command
             } else {
                 $query->where('status', (int) $status);
             }
+        }
+
+        if ($method = $this->option('method')) {
+            $methods = array_map(strtoupper(...), array_filter(array_map(trim(...), explode(',', $method))));
+
+            $query->whereIn('method', $methods);
         }
 
         if ($channel = $this->option('channel')) {

@@ -494,3 +494,72 @@ it('renders verbose lines end to end with the -v flag', function () {
         ->toContain('verbose.example.com' . $longPath)
         ->toContain('id=');
 });
+
+function tailInsertOutgoingOnFirstPoll(array $rows): void
+{
+    $outgoing = config('kolaybi.request-tracer.outgoing.table');
+    $connection = DB::connection('testing');
+    $inserted = false;
+
+    DB::listen(function ($query) use ($connection, $outgoing, &$inserted, $rows) {
+        if (!$inserted && str_starts_with($query->sql, 'select "id" from') && str_contains($query->sql, $outgoing)) {
+            $inserted = true;
+            $connection->table($outgoing)->insert(array_map(fn(array $row) => array_merge([
+                'id'         => (string) Str::ulid(),
+                'path'       => '/api/test',
+                'status'     => 200,
+                'duration'   => 10,
+                'created_at' => now(),
+            ], $row), $rows));
+        }
+    });
+}
+
+it('accepts method filter', function () {
+    $this->artisan('request-tracer:tail', ['--max-polls' => 1, '--method' => 'GET'])
+        ->assertExitCode(0);
+});
+
+it('filters by method', function () {
+    tailInsertOutgoingOnFirstPoll([
+        ['host' => 'get-request.example.com', 'method' => 'GET'],
+        ['host' => 'options-request.example.com', 'method' => 'OPTIONS'],
+    ]);
+
+    $buffer = new BufferedOutput();
+    Artisan::call('request-tracer:tail', ['--max-polls' => 1, '--type' => 'outgoing', '--interval' => 1, '--method' => 'GET'], $buffer);
+
+    expect($buffer->fetch())
+        ->toContain('get-request.example.com')
+        ->not->toContain('options-request.example.com');
+});
+
+it('filters by multiple comma separated methods', function () {
+    tailInsertOutgoingOnFirstPoll([
+        ['host' => 'get-request.example.com', 'method' => 'GET'],
+        ['host' => 'post-request.example.com', 'method' => 'POST'],
+        ['host' => 'options-request.example.com', 'method' => 'OPTIONS'],
+    ]);
+
+    $buffer = new BufferedOutput();
+    Artisan::call('request-tracer:tail', ['--max-polls' => 1, '--type' => 'outgoing', '--interval' => 1, '--method' => 'GET,POST'], $buffer);
+
+    expect($buffer->fetch())
+        ->toContain('get-request.example.com')
+        ->toContain('post-request.example.com')
+        ->not->toContain('options-request.example.com');
+});
+
+it('filters method case insensitively', function () {
+    tailInsertOutgoingOnFirstPoll([
+        ['host' => 'get-request.example.com', 'method' => 'GET'],
+        ['host' => 'options-request.example.com', 'method' => 'OPTIONS'],
+    ]);
+
+    $buffer = new BufferedOutput();
+    Artisan::call('request-tracer:tail', ['--max-polls' => 1, '--type' => 'outgoing', '--interval' => 1, '--method' => 'get'], $buffer);
+
+    expect($buffer->fetch())
+        ->toContain('get-request.example.com')
+        ->not->toContain('options-request.example.com');
+});
