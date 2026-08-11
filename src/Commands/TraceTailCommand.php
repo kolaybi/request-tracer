@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
+use KolayBi\RequestTracer\Commands\Concerns\ColorsStatus;
 use KolayBi\RequestTracer\Enums\TraceDirection;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
@@ -15,6 +16,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class TraceTailCommand extends Command
 {
     use BuildsEndpoint;
+    use ColorsStatus;
 
     protected $signature = 'request-tracer:tail
         {--type= : Filter by type (incoming or outgoing)}
@@ -226,26 +228,5 @@ class TraceTailCommand extends Command
             OutputInterface::VERBOSITY_DEBUG        => 3,
             default                                 => 0,
         };
-    }
-
-    private function colorStatus(?int $status): string
-    {
-        if (null === $status) {
-            return '<fg=white>—</>';
-        }
-
-        if ($status >= 500) {
-            return "<fg=red>{$status}</>";
-        }
-
-        if ($status >= 400) {
-            return "<fg=yellow>{$status}</>";
-        }
-
-        if ($status >= 200 && $status < 300) {
-            return "<fg=green>{$status}</>";
-        }
-
-        return "<fg=white>{$status}</>";
     }
 }

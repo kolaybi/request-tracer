@@ -4,6 +4,7 @@ namespace KolayBi\RequestTracer\Commands;
 
 use Illuminate\Console\Command;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
+use KolayBi\RequestTracer\Commands\Concerns\ColorsStatus;
 use KolayBi\RequestTracer\Commands\Concerns\QueriesArchiveTables;
 use KolayBi\RequestTracer\Enums\TraceDirection;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
@@ -13,6 +14,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class TraceInspectCommand extends Command
 {
     use BuildsEndpoint;
+    use ColorsStatus;
     use QueriesArchiveTables;
 
     protected $signature = 'request-tracer:inspect {id} {--full}';
@@ -181,23 +183,6 @@ class TraceInspectCommand extends Command
             $this->components->twoColumnDetail('<fg=yellow>Extra</>');
             $this->renderBody($trace->extra, null);
         }
-    }
-
-    private function colorStatus(?int $status): string
-    {
-        if (null === $status) {
-            return '—';
-        }
-
-        $color = match (true) {
-            $status >= 500 => 'red',
-            $status >= 400 => 'yellow',
-            $status >= 300 => 'cyan',
-            $status >= 200 => 'green',
-            default        => 'white',
-        };
-
-        return "<fg={$color}>{$status}</>";
     }
 
     private function formatSize(?int $size): string
