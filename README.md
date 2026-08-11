@@ -249,6 +249,26 @@ php artisan request-tracer:inspect 01JEXAMPLE123 --full
 
 The command searches both incoming and outgoing tables automatically — no need to specify which.
 
+### Tail
+
+Live-tail new traces as they arrive:
+
+```bash
+php artisan request-tracer:tail
+
+# Filters (all case-insensitive)
+php artisan request-tracer:tail --type=incoming --status=5xx
+php artisan request-tracer:tail --host="*.bank.example.com" --channel=payments
+php artisan request-tracer:tail --method=GET,POST
+
+# Wider lines with progressive verbosity
+php artisan request-tracer:tail -v    # full endpoint (no truncation) + record id
+php artisan request-tracer:tail -vv   # + trace id, tenant, user, client ip
+php artisan request-tracer:tail -vvv  # + request/response sizes, server, error message
+```
+
+`--interval=N` controls the poll interval in seconds (default 2), and the record id shown at `-v` can be fed straight into `request-tracer:inspect`.
+
 ## Data Retention
 
 ### Table Rotation (recommended)
