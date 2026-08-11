@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use KolayBi\RequestTracer\Commands\Concerns\BuildsEndpoint;
 use KolayBi\RequestTracer\Models\IncomingRequestTrace;
 use KolayBi\RequestTracer\Models\OutgoingRequestTrace;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class TraceTailCommand extends Command
 {
@@ -18,6 +19,7 @@ class TraceTailCommand extends Command
         {--type= : Filter by type (incoming or outgoing)}
         {--host= : Filter by host (supports * wildcards)}
         {--status= : Filter by status code (e.g. 500, 4xx, 5xx)}
+        {--method= : Filter by HTTP method (comma-separated for multiple, e.g. GET,POST)}
         {--channel= : Filter by channel}
         {--interval=2 : Poll interval in seconds}
         {--max-polls= : Stop after N polls (for testing)}';
@@ -26,7 +28,7 @@ class TraceTailCommand extends Command
 
     public function handle(): int
     {
-        $type = $this->option('type');
+        $type = $this->option('type') ? strtolower($this->option('type')) : null;
         $interval = max(1, min(60, (int) $this->option('interval')));
         $maxPolls = $this->option('max-polls') ? (int) $this->option('max-polls') : null;
 
@@ -116,6 +118,8 @@ class TraceTailCommand extends Command
         }
 
         if ($status = $this->option('status')) {
+            $status = strtolower($status);
+
             if (Str::endsWith($status, 'xx')) {
                 $base = (int) Str::before($status, 'xx');
                 $query->whereBetween('status', [$base * 100, ($base * 100) + 99]);
@@ -124,8 +128,14 @@ class TraceTailCommand extends Command
             }
         }
 
+        if ($method = $this->option('method')) {
+            $methods = array_map(strtoupper(...), array_filter(array_map(trim(...), explode(',', $method))));
+
+            $query->whereIn('method', $methods);
+        }
+
         if ($channel = $this->option('channel')) {
-            $query->where('channel', $channel);
+            $query->whereRaw('LOWER(channel) = ?', [strtolower($channel)]);
         }
 
         return $query;
@@ -133,14 +143,81 @@ class TraceTailCommand extends Command
 
     private function renderLine(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type): void
     {
+        $verbosity = $this->verbosity();
+
         $time = Carbon::parse($trace->created_at ?? now())->format('H:i:s');
         $status = $this->colorStatus($trace->status);
         $method = str_pad($trace->method ?? '—', 7);
-        $endpoint = Str::limit($this->buildEndpoint($trace, $type), 55);
+        $endpoint = $this->buildEndpoint($trace, $type);
+
+        if ($verbosity < 1) {
+            $endpoint = Str::limit($endpoint, 55);
+        }
+
         $duration = null !== $trace->duration ? "{$trace->duration}ms" : '—';
         $channel = $trace->channel ? " [{$trace->channel}]" : '';
+        $extras = $this->buildExtras($trace, $type, $verbosity);
 
-        $this->line("[{$time}] {$status} {$method} {$endpoint} {$duration} <fg=gray>[{$type}]{$channel}</>");
+        $this->line("[{$time}] {$status} {$method} {$endpoint} {$duration} <fg=gray>[{$type}]{$channel}{$extras}</>");
+    }
+
+    private function buildExtras(IncomingRequestTrace|OutgoingRequestTrace $trace, string $type, int $verbosity): string
+    {
+        if ($verbosity < 1) {
+            return '';
+        }
+
+        $parts = ["id={$trace->id}"];
+
+        if ($verbosity >= 2) {
+            $tenantColumn = config('kolaybi.request-tracer.tenant_column', 'tenant_id');
+
+            if ($trace->trace_id) {
+                $parts[] = "trace={$trace->trace_id}";
+            }
+
+            if (null !== $trace->{$tenantColumn}) {
+                $parts[] = "tenant={$trace->{$tenantColumn}}";
+            }
+
+            if (null !== $trace->user_id) {
+                $parts[] = "user={$trace->user_id}";
+            }
+
+            if ($trace->client_ip) {
+                $parts[] = "ip={$trace->client_ip}";
+            }
+        }
+
+        if ($verbosity >= 3) {
+            if (null !== $trace->request_size) {
+                $parts[] = "req={$trace->request_size}B";
+            }
+
+            if (null !== $trace->response_size) {
+                $parts[] = "res={$trace->response_size}B";
+            }
+
+            if ($trace->server_identifier) {
+                $parts[] = "server={$trace->server_identifier}";
+            }
+
+            if ('OUTGOING' === $type && $trace->message) {
+                $parts[] = 'msg=' . Str::limit($trace->message, 80);
+            }
+        }
+
+        return ' ' . implode(' ', $parts);
+    }
+
+    private function verbosity(): int
+    {
+        return match ($this->output->getVerbosity()) {
+            OutputInterface::VERBOSITY_VERBOSE      => 1,
+            OutputInterface::VERBOSITY_VERY_VERBOSE => 2,
+            OutputInterface::VERBOSITY_DEBUG        => 3,
+            default                                 => 0,
+        };
     }
 
     private function colorStatus(?int $status): string
