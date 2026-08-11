@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Added
+- `request-tracer:tail` verbosity levels — `-v` renders the full endpoint (no 55-char truncation) plus the record `id=`; `-vv` adds `trace=`, `tenant=`, `user=` and `ip=`; `-vvv` adds `req=`/`res=` byte sizes, `server=` and the outgoing failure `msg=`. Null fields are omitted.
+- `request-tracer:tail --method` filter — a single method (`--method=GET`) or comma-separated list (`--method=GET,POST`).
+
+### Changed
+- `request-tracer:tail` filters are now case-insensitive: `--type=OUTGOING`, `--status=5XX`, `--method=get` and `--channel=PAYMENTS` behave the same as their lowercase forms (`--host` already matched case-insensitively).
+
 ## [v1.6.0](https://github.com/kolaybi/request-tracer/compare/v1.5.0...v1.6.0) (2026-06-23)
 
 ### Changed
