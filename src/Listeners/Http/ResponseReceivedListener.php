@@ -42,7 +42,7 @@ class ResponseReceivedListener extends AbstractTraceListener
                 'response_body'    => $excludeResponseBody ? null : TraceHelper::normalizeBody($response->body()),
                 'response_headers' => TraceHelper::normalizeHeaders($this->stripTraceHeaders($response->headers())),
                 'response_size'    => strlen($response->body()),
-                'stats'            => json_encode($response->handlerStats(), JSON_UNESCAPED_SLASHES),
+                'stats'            => TraceHelper::normalizeStats($response->handlerStats()),
             ],
         );
 

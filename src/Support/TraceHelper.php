@@ -74,6 +74,15 @@ class TraceHelper
         return self::truncateBody($body);
     }
 
+    public static function normalizeStats(array $stats): false|string
+    {
+        if (self::shouldMaskSensitive() && is_string($stats['request_header'] ?? null)) {
+            $stats['request_header'] = self::maskHeaders($stats['request_header'], self::sensitiveKeys(), self::maskValue());
+        }
+
+        return json_encode($stats, JSON_UNESCAPED_SLASHES);
+    }
+
     public static function shouldExcludeBody(?string $contentType): bool
     {
         if (null === $contentType || '' === $contentType) {

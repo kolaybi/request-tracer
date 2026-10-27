@@ -1,6 +1,7 @@
 <?php
 
 use GuzzleHttp\Psr7\Response as Psr7Response;
+use GuzzleHttp\TransferStats;
 use Illuminate\Http\Client\Events\ResponseReceived;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\Client\Response;
@@ -141,5 +142,31 @@ it('records handler stats as JSON', function () {
         // stats should be a valid JSON string (even if empty object/array)
         return null !== $job->attributes['stats']
             && null !== json_decode($job->attributes['stats']);
+    });
+});
+
+it('masks sensitive headers in handler stats request_header when enabled', function () {
+    config([
+        'kolaybi.request-tracer.mask_sensitive' => true,
+        'kolaybi.request-tracer.sensitive_keys' => 'authorization',
+    ]);
+
+    $psrRequest = new GuzzleHttp\Psr7\Request('GET', 'https://api.example.com/stats');
+    $request = new Request($psrRequest);
+    $psrResponse = new Psr7Response(200, [], 'ok');
+    $response = new Response($psrResponse);
+    $response->transferStats = new TransferStats($psrRequest, $psrResponse, 0.5, null, [
+        'total_time'     => 0.5,
+        'request_header' => "GET /stats HTTP/1.1\r\nHost: api.example.com\r\nAuthorization: Bearer secret-token\r\nAccept: application/json\r\n\r\n",
+    ]);
+
+    $listener = new ResponseReceivedListener();
+    $listener->handle(new ResponseReceived($request, $response));
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        $stats = json_decode($job->attributes['stats'], true);
+
+        return "GET /stats HTTP/1.1\r\nHost: api.example.com\r\nAuthorization: [REDACTED]\r\nAccept: application/json\r\n\r\n" === $stats['request_header']
+            && 0.5 === $stats['total_time'];
     });
 });
