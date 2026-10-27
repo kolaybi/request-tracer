@@ -74,6 +74,21 @@ class TraceHelper
         return self::truncateBody($body);
     }
 
+    public static function normalizeStats(array $stats): false|string
+    {
+        if (self::shouldMaskSensitive()) {
+            if (is_string($stats['request_header'] ?? null)) {
+                $stats['request_header'] = self::maskHeaders($stats['request_header'], self::sensitiveKeys(), self::maskValue());
+            }
+
+            if (is_string($stats['url'] ?? null)) {
+                $stats['url'] = self::maskUrlQuery($stats['url']);
+            }
+        }
+
+        return json_encode($stats, JSON_UNESCAPED_SLASHES);
+    }
+
     public static function shouldExcludeBody(?string $contentType): bool
     {
         if (null === $contentType || '' === $contentType) {
@@ -171,6 +186,17 @@ class TraceHelper
         }
 
         return implode($eol, $lines);
+    }
+
+    private static function maskUrlQuery(string $url): string
+    {
+        $query = parse_url($url, PHP_URL_QUERY);
+
+        if (!is_string($query)) {
+            return $url;
+        }
+
+        return substr_replace($url, self::normalizeQuery($query), strpos($url, '?') + 1, strlen($query));
     }
 
     private static function maskBody(string $body, array $sensitiveKeys, string $maskValue): string

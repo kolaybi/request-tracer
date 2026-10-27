@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v1.7.1](https://github.com/kolaybi/request-tracer/compare/v1.7.0...v1.7.1) (2026-10-27)
+
+### Fixed
+- `stats.request_header` (the raw request headers cURL records when `CURLINFO_HEADER_OUT` is on) is now masked with the same `sensitive_keys` rules as `request_headers` when `mask_sensitive` is enabled. Previously `Authorization` and other sensitive values were stored in plaintext there and shown by `request-tracer:inspect`.
+- `stats.url` query params are now masked with the same `sensitive_keys` rules as the `query` column when `mask_sensitive` is enabled. Previously tokens such as `?access_token=` were stored in plaintext inside `stats` even though `query` was masked.
+
 ## [v1.7.0](https://github.com/kolaybi/request-tracer/compare/v1.6.0...v1.7.0) (2026-08-11)
 
 ### Added
