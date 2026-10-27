@@ -170,3 +170,27 @@ it('masks sensitive headers in handler stats request_header when enabled', funct
             && 0.5 === $stats['total_time'];
     });
 });
+
+it('masks sensitive query params in handler stats url when enabled', function () {
+    config([
+        'kolaybi.request-tracer.mask_sensitive' => true,
+        'kolaybi.request-tracer.sensitive_keys' => 'access_token',
+    ]);
+
+    $psrRequest = new GuzzleHttp\Psr7\Request('GET', 'https://api.example.com/stats?access_token=secret-token&page=2');
+    $request = new Request($psrRequest);
+    $psrResponse = new Psr7Response(200, [], 'ok');
+    $response = new Response($psrResponse);
+    $response->transferStats = new TransferStats($psrRequest, $psrResponse, 0.5, null, [
+        'url' => 'https://api.example.com/stats?access_token=secret-token&page=2',
+    ]);
+
+    $listener = new ResponseReceivedListener();
+    $listener->handle(new ResponseReceived($request, $response));
+
+    Queue::assertPushed(StoreTraceJob::class, function (StoreTraceJob $job) {
+        $stats = json_decode($job->attributes['stats'], true);
+
+        return 'https://api.example.com/stats?access_token=%5BREDACTED%5D&page=2' === $stats['url'];
+    });
+});
